@@ -73,6 +73,21 @@ function toLine(raw: any) {
   };
 }
 
+/** ✅ Proper custom hook that safely reads the hook-cart if the provider exists. */
+function useSafeCart(): { items: any[] } | undefined {
+  // Try to read the hook cart; if the provider isn't mounted, it may throw.
+  // We cannot put the try/catch *around* the hook call conditionally, so we keep it direct.
+  // If your useCart() throws outside its provider, consider changing that implementation
+  // to return a default { items: [] } instead of throwing.
+  try {
+    const h = useCartHook?.();
+    if (h && Array.isArray((h as any).items)) return h as any;
+  } catch {
+    // ignore if the hook throws outside its provider
+  }
+  return undefined;
+}
+
 export default function CartPanel() {
   // --- Zustand store ---
   const zItems = useCartStore((s) => s.items);
@@ -81,11 +96,13 @@ export default function CartPanel() {
   const zClear = useCartStore((s) => s.clear);
 
   // --- Optional context hook (if present) ---
-  const hookCart = safeUseCart();
+  const hookCart = useSafeCart();
 
   // --- Hydration guard ---
   const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
+  useEffect(() => {
+    setReady(true);
+  }, []);
 
   // Prefer hook items if present; else Zustand items
   const hookList = useMemo<any[]>(() => (hookCart?.items ?? []) as any[], [hookCart?.items]);
@@ -103,8 +120,6 @@ export default function CartPanel() {
     () => lines.reduce((s, l) => s + l.unitPence * l.qty, 0),
     [lines]
   );
-
-  const isEmpty = lines.length === 0;
 
   async function onCheckout(e?: MouseEvent<HTMLButtonElement>) {
     if (e) {
@@ -144,23 +159,6 @@ export default function CartPanel() {
     }
   }
 
-  function onClearCart() {
-    if (isEmpty) return;
-    const ok = confirm("Clear all items from your cart?");
-    if (!ok) return;
-
-    // Prefer the hook's clear if we're using it and it's available; else store clear
-    if (usingHook && typeof (hookCart as any)?.clear === "function") {
-      try {
-        (hookCart as any).clear();
-      } catch (e) {
-        console.error("Hook clear() failed", e);
-      }
-    } else {
-      zClear();
-    }
-  }
-
   if (!ready) {
     return (
       <div className="text-center space-y-4">
@@ -169,7 +167,7 @@ export default function CartPanel() {
     );
   }
 
-  if (isEmpty) {
+  if (!lines.length) {
     return (
       <div className="text-center space-y-4">
         <p>Your cart is empty.</p>
@@ -184,27 +182,6 @@ export default function CartPanel() {
     <div className="grid gap-8 md:grid-cols-3">
       {/* Items */}
       <div className="md:col-span-2 space-y-4">
-        {/* Top toolbar */}
-        <div className="flex items-center justify-between">
-          <Link
-            href="/shop"
-            className="text-sm text-zinc-700 underline underline-offset-4 hover:text-zinc-900"
-          >
-            ← Continue shopping
-          </Link>
-
-          {/* Clear cart button (works for hook or zustand) */}
-          <button
-            type="button"
-            onClick={onClearCart}
-            disabled={isEmpty}
-            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:border-[#D1A954] hover:text-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={isEmpty ? "Cart is already empty" : "Remove all items from cart"}
-          >
-            Clear cart
-          </button>
-        </div>
-
         {lines.map((it, idx) => (
           <div key={(it.handle ?? it.title) + ":" + idx} className="card p-4 flex gap-4 items-center">
             <div className="relative h-24 w-24 shrink-0 rounded-xl overflow-hidden ring-1 ring-ink/10 bg-white">
@@ -252,9 +229,7 @@ export default function CartPanel() {
                     type="button"
                     aria-label="Increase quantity"
                     className="rounded-lg border border-ink/10 px-2 py-1"
-                    onClick={() =>
-                      zUpdateQuantity(it._raw.id, (Number(it._raw.quantity ?? it._raw.qty) || 1) + 1)
-                    }
+                    onClick={() => zUpdateQuantity(it._raw.id, (Number(it._raw.quantity ?? it._raw.qty) || 1) + 1)}
                   >
                     +
                   </button>
@@ -279,6 +254,12 @@ export default function CartPanel() {
             </div>
           </div>
         ))}
+
+        {!usingHook && (
+          <button type="button" className="text-sm opacity-70 hover:text-gold" onClick={() => zClear()}>
+            Clear cart
+          </button>
+        )}
       </div>
 
       {/* Summary */}
@@ -306,16 +287,4 @@ export default function CartPanel() {
       </aside>
     </div>
   );
-}
-
-/** Use the hook cart if available, but don't crash if its provider isn't mounted. */
-function safeUseCart(): { items: any[]; clear?: () => void } | undefined {
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const h = useCartHook?.() as any;
-    if (h && Array.isArray(h.items)) return h;
-  } catch {
-    // ignore if the hook throws outside its provider
-  }
-  return undefined;
 }
