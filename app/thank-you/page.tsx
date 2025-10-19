@@ -11,15 +11,19 @@ import { useCart as useCartCtx } from "@/app/components/CartProvider";
 const GOLD = "#D1A954";
 const COUNT_KEY = "ashora:cartCount";
 
+/** ✅ Custom hook: safely read context cart if provider is mounted. */
+function useOptionalCart() {
+  try {
+    // This is a hook call (allowed here because we're in a custom hook).
+    return useCartCtx();
+  } catch {
+    return undefined;
+  }
+}
+
 function ClearCartOnMount() {
   const storeClear = useCartStore((s) => s.clear);
-  const ctx = (() => {
-    try {
-      return useCartCtx?.();
-    } catch {
-      return undefined;
-    }
-  })();
+  const ctx = useOptionalCart();
 
   useEffect(() => {
     // 1) Clear Zustand cart (if present)
