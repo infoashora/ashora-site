@@ -1,78 +1,49 @@
 ﻿"use client";
 
-import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 
-const slides = [
-  "/hero/hero-1.jpeg",
-  "/hero/hero-2.jpeg",
-  "/hero/hero-3.jpeg",
-  "/hero/hero-4.jpeg",
-  "/hero/hero-5.jpeg",
-  "/hero/IMG_0158.jpeg",
-  "/hero/IMG_0159.jpeg",
+const IMAGES = [
+  "/hero/ashora-hero-1.jpg",
+  "/hero/ashora-hero-2.jpg",
+  "/hero/ashora-hero-3.jpg",
+  "/hero/ashora-hero-4.jpg",
+  "/hero/ashora-hero-5.jpg",
+  "/hero/ashora-hero-6.jpg",
 ];
 
 export default function HeroSlideshow() {
-  const [i, setI] = useState(0);
-  const next = useCallback(() => setI((p) => (p + 1) % slides.length), []);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(next, 6000);
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % IMAGES.length);
+    }, 6000);
     return () => clearInterval(id);
-  }, [next]);
+  }, []);
 
   return (
-    <section className="relative h-[62vh] min-h-[420px] w-full overflow-hidden bg-stone-900">
-      <img
-        src={slides[i]}
+    <div className="relative h-[420px] w-full overflow-hidden md:h-[520px]">
+      <Image
+        key={IMAGES[index]}
+        src={IMAGES[index]}
         alt="ASHORA hero"
-        className="absolute inset-0 h-full w-full object-cover"
-        draggable={false}
-        onError={next}
+        fill
+        priority
+        className="object-cover transition-opacity duration-700"
       />
-
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-black/60" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/30 to-transparent" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-6xl px-6 h-full flex flex-col items-center justify-center text-center">
-        <h1 className="font-cormorant text-white text-3xl md:text-5xl font-semibold tracking-tight">
-          Every Candle Holds A Little Magic
-        </h1>
-        <p className="mt-2 text-white/90 text-sm md:text-base max-w-2xl">
-          ASHORA isn’t just a brand or product; it’s a service to the soul.
-        </p>
-
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/collections"
-            className="inline-flex items-center rounded-full px-5 py-2.5 text-sm md:text-base bg-white text-ink no-underline hover:text-gold shadow"
-          >
-            Shop Candles
-          </Link>
-          <Link
-            href="/#intentions"
-            className="inline-flex items-center rounded-full px-5 py-2.5 text-sm md:text-base bg-white text-ink no-underline hover:text-gold shadow"
-          >
-            Choose Your Intention
-          </Link>
-        </div>
-
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              aria-label={`Slide ${idx + 1}`}
-              onClick={() => setI(idx)}
-              className={`h-1.5 w-6 rounded-full transition-all ${
-                idx === i ? "bg-white/90" : "bg-white/40 hover:bg-white/60"
-              }`}
-            />
-          ))}
+      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/30" />
+      <div className="relative z-10 mx-auto flex h-full max-w-6xl items-center justify-center px-6 text-center">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-white md:text-5xl">
+            Every Candle Holds A Little Magic
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-white/90">
+            ASHORA isn’t just a brand or product — it’s a service to the soul.
+          </p>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
