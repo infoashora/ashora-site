@@ -2,28 +2,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useContext } from "react";
 
 // Try both carts: Context + Zustand
 import { useCartStore } from "@/lib/cart-store";
-import { useCart as useCartCtx } from "@/app/components/CartProvider";
+import { CartContext } from "@/app/components/CartProvider"; // 👈 import the context (not the throwing hook)
 
 const GOLD = "#D1A954";
 const COUNT_KEY = "ashora:cartCount";
 
-/** ✅ Custom hook: safely read context cart if provider is mounted. */
-function useOptionalCart() {
-  try {
-    // This is a hook call (allowed here because we're in a custom hook).
-    return useCartCtx();
-  } catch {
-    return undefined;
-  }
-}
-
 function ClearCartOnMount() {
   const storeClear = useCartStore((s) => s.clear);
-  const ctx = useOptionalCart();
+
+  // ✅ Safe: useContext on the raw context returns `undefined` if provider isn't mounted.
+  // No try/catch, no conditional invocation — satisfies rules-of-hooks.
+  const ctx = useContext(CartContext);
 
   useEffect(() => {
     // 1) Clear Zustand cart (if present)
@@ -33,7 +26,7 @@ function ClearCartOnMount() {
 
     // 2) Clear Context cart (if provider present)
     try {
-      (ctx as any)?.clear?.();
+      ctx?.clear?.();
     } catch {}
 
     // 3) Reset header badge fallback + notify listeners
