@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ─────────────────────────────────────────── */
+:root {
+  /* brand palette (matches your Tailwind theme) */
+  --ink: #0b0b0c;
+  --parchment: #f6f3ee;
+  --gold: #c6a864;
+  --accentPink: #f4c7d9;
+  --accentGreen: #8CCE72;
+  --accentBlue: #b7d8ff;
+}
+
+/* ─── Base elements ─────────────────────────────────────────── */
+html, body, #__next {
+  height: 100%;
+}
+
+body {
+  @apply bg-parchment text-ink antialiased;
+  background-color: var(--parchment);
+  color: var(--ink);
+}
+
+/* Links: never underline on hover (your preference) */
+a {
+  @apply no-underline;
+}
+
+/* Better focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Images should not exceed container */
+img, svg, canvas, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ─── Reusable UI primitives ────────────────────────────────── */
+.btn {
+  @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm md:text-base transition;
+}
+.btn-primary {
+  @apply bg-ink text-white hover:bg-ink/90;
+}
+.btn-light {
+  @apply bg-white text-ink hover:text-gold shadow;
+}
+.btn-outline {
+  /* FIX: replaced ring-ink/15 with supported combo */
+  @apply bg-parchment ring-1 ring-ink ring-opacity-20 text-ink hover:text-gold;
+}
+
+/* Card hover (used on product/intention tiles) */
+.card-hover {
+  @apply transition-shadow hover:shadow-md;
+}
+
+/* Prevent underlines site-wide when hovering links */
+.no-underline {
+  text-decoration: none !important;
+}
+
+/* ─── Brand helpers ─────────────────────────────────────────── */
+/* Force uppercase + gentle letter spacing for the wordmark */
+.brand {
+  text-transform: uppercase;       /* renders “ashora” as “ASHORA” */
+  letter-spacing: 0.12em;          /* subtle luxury spacing */
+}
+
+/* Optional gold-on-hover utility (used on nav links) */
+.hover-gold:hover {
+  color: var(--gold);
+}
+
+/* Hairline divider used on subtle separators */
+.hr-hairline {
+  border-top: 1px solid rgba(11, 11, 12, 0.1);
+}
+
+/* Utility to remove default tap highlight on mobile buttons */
+@media (hover: none) and (pointer: coarse) {
+  a, button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}

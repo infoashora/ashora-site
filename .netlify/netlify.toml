@@ -1,0 +1,36 @@
+headers = []
+redirects = []
+
+[dev]
+command = "npm run dev"
+framework = "next"
+
+[functions]
+
+[functions."*"]
+
+[[plugins]]
+origin = "config"
+package = "@netlify/plugin-nextjs"
+
+[plugins.inputs]
+
+[build]
+publish = "C:\\Users\\kchar\\Projects\\ashora-website-20250909-0805\\.next"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]

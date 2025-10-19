@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global base */
+:root { color-scheme: light; }
+html, body, :root { height: 100%; }
+body { @apply bg-parchment text-ink antialiased; }
+
+/* Links: never underline (even on hover), but keep a clear keyboard focus */
+a { @apply no-underline; text-decoration: none; }
+a:hover,
+a:active,
+a:focus { @apply no-underline; text-decoration: none; }
+a:focus-visible { @apply outline-none ring-2 ring-gold/60 rounded-md; }
+
+/* Reusable utility groups */
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl border border-ink/10 px-4 py-2 text-sm font-medium shadow-soft transition no-underline;
+}
+.btn:hover { @apply shadow-md no-underline; }
+
+.card {
+  @apply rounded-2xl border border-ink/10 bg-white shadow-soft;
+}
+
+/* ---- Ashora logo: default black, “sharpened”; hover → gold ---- */
+.ashora-logo-img { filter: contrast(115%); }
+a.group:hover .ashora-logo-img,
+a.group:focus-visible .ashora-logo-img,
+a.group:active .ashora-logo-img {
+  /* approximate gold #c6a864 */
+  filter: invert(63%) sepia(28%) saturate(620%) hue-rotate(13deg) brightness(92%) contrast(92%);
+}

@@ -1,0 +1,24 @@
+/* ASHORA site-wide utilities (no Tailwind config changes needed) */
+:root {
+  --ashora-gold: #D1A954;
+}
+
+/* Add to any interactive element to get gold text + border on hover */
+.hover-gold:hover {
+  color: var(--ashora-gold) !important;
+  border-color: var(--ashora-gold) !important;
+  transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+
+/* Optional: gold background on hover when you want it */
+.hover-bg-gold:hover {
+  background-color: rgba(209, 169, 84, 0.24) !important;
+}
+
+/* Utility colours if you need to force them in markup */
+.text-gold { color: var(--ashora-gold) !important; }
+.border-gold { border-color: var(--ashora-gold) !important; }
+.bg-gold { background-color: var(--ashora-gold) !important; }
+
+/* Group helper: make a child turn gold when parent is hovered (add 'gold-target' to the child) */
+.group:hover .gold-target { color: var(--ashora-gold) !important; }
