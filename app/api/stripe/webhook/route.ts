@@ -1,21 +1,20 @@
 ﻿// app/api/stripe/webhook/route.ts
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import Stripe from "stripe";
-import { Resend } from "resend";
+import type Stripe from "stripe";
 import { promises as fs } from "fs";
 import path from "path";
 import { PRODUCTS_MAP } from "@/app/product/content";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs";        // needs fs/path
+export const dynamic = "force-dynamic"; // never prerender this
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
-
-// ---------- utils ----------
+// ---------- utils (pure, no side-effects) ----------
 function gbp(pence?: number | null) {
   if (typeof pence !== "number") return "—";
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(
+    pence / 100
+  );
 }
 const safe = (v?: string | null) => (v ?? "").toString();
 
@@ -40,9 +39,9 @@ async function writeStock(map: StockMap) {
   await fs.writeFile(STOCK_PATH, JSON.stringify(map, null, 2), "utf8");
 }
 
-function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
-  const price = li.price ?? null;
-  const prod = (price && (price as any).product) ?? null;
+function resolveHandleFromLineItem(li: any): string | null {
+  const price = li?.price ?? null;
+  const prod = price && (price as any).product ? (price as any).product : null;
 
   const metaHandle =
     (prod?.metadata?.handle as string | undefined) ||
@@ -50,9 +49,10 @@ function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
 
   if (metaHandle && PRODUCTS_MAP[metaHandle]) return metaHandle;
 
-  const candidates = [prod?.name || "", li.description || "", price?.nickname || ""]
+  const candidates = [prod?.name || "", li?.description || "", price?.nickname || ""]
     .map((s) => (s || "").trim())
     .filter(Boolean);
+
   if (candidates.length) {
     for (const [handle, p] of Object.entries(PRODUCTS_MAP)) {
       const title = (p.title || "").trim().toLowerCase();
@@ -66,17 +66,28 @@ async function decrementStockFor(handles: Array<{ handle: string; qty: number }>
   if (!handles.length) return;
   const current = await readStock();
 
+  // seed from catalogue if missing
   for (const { handle } of handles) {
     if (current[handle] === undefined) {
       const cat = PRODUCTS_MAP[handle];
       if (cat && typeof cat.stock === "number") current[handle] = cat.stock;
     }
   }
+  // decrement
   for (const { handle, qty } of handles) {
     if (current[handle] === undefined) continue;
     current[handle] = Math.max(0, (current[handle] ?? 0) - Math.max(1, qty));
   }
   await writeStock(current);
+}
+
+// Lazy Stripe client to avoid top-level side effects
+async function getStripe(): Promise<Stripe> {
+  const key = process.env.STRIPE_SECRET_KEY || "";
+  const mod = await import("stripe");
+  const StripeCtor = mod.default;
+  // Do not pass apiVersion to avoid TS literal narrowing issues in some builds
+  return new StripeCtor(key) as unknown as Stripe;
 }
 
 // ---------- webhook handler ----------
@@ -89,11 +100,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
+  // must read raw body for signature verification
   const rawBody = await req.text();
-  let event: Stripe.Event;
 
+  let event: any;
   try {
-    event = Stripe.webhooks.constructEvent(rawBody, sig, secret);
+    const stripe = await getStripe();
+    event = (await import("stripe")).default.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err: any) {
     console.error("[stripe] Signature verification failed:", err?.message || err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
@@ -101,13 +114,14 @@ export async function POST(req: Request) {
 
   try {
     if (event.type === "checkout.session.completed") {
-      const sessionObj = event.data.object as Stripe.Checkout.Session;
+      const stripe = await getStripe();
+      const sessionObj = event.data.object as any;
 
       const session = await stripe.checkout.sessions.retrieve(sessionObj.id, {
         expand: ["line_items.data.price.product", "payment_intent", "customer_details", "shipping_details"],
       });
 
-      const lineItems = (session.line_items?.data || []).map((li) => {
+      const lineItems = (session.line_items?.data || []).map((li: any) => {
         const prod = (li?.price as any)?.product ?? null;
         return {
           id: li.id,
@@ -134,11 +148,7 @@ export async function POST(req: Request) {
         const handle = resolveHandleFromLineItem(li);
         const qty = Math.max(1, li.quantity ?? 1);
         if (handle) decrements.push({ handle, qty });
-        else
-          console.warn("[stock] Could not resolve handle for line item:", {
-            li_id: li.id,
-            desc: li.description,
-          });
+        else console.warn("[stock] Could not resolve handle for line item:", { li_id: li.id, desc: li.description });
       }
       if (decrements.length) {
         try {
@@ -148,6 +158,7 @@ export async function POST(req: Request) {
         }
       }
 
+      // forward to n8n
       const payload = {
         type: event.type,
         event_id: event.id,
@@ -186,10 +197,12 @@ export async function POST(req: Request) {
         }
       }
 
+      // Optional: customer email via Resend (defer import)
       try {
         const RESEND_API_KEY = process.env.RESEND_API_KEY;
         const toEmail = safe(session.customer_details?.email) || safe(session.customer_email);
         if (RESEND_API_KEY && toEmail) {
+          const { Resend } = await import("resend");
           const itemsHtml = lineItems
             .map((li) => {
               const qty = li.quantity ?? 1;
@@ -204,7 +217,9 @@ export async function POST(req: Request) {
 
           const html = `
             <div style="font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#111;">
-              <h2 style="margin:0 0 8px 0;">Thank you for your order${session.customer_details?.name ? `, ${session.customer_details.name}` : ""}.</h2>
+              <h2 style="margin:0 0 8px 0;">Thank you for your order${
+                session.customer_details?.name ? `, ${session.customer_details.name}` : ""
+              }.</h2>
               <p style="margin:0 0 14px 0;">We’re preparing your ASHORA items with love & intention.</p>
               <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#fff;">
                 <div style="font-weight:600; font-size:14px; margin-bottom:8px;">Order Summary</div>
@@ -214,7 +229,9 @@ export async function POST(req: Request) {
                   <tr>
                     <td style="padding:8px 0; font-weight:600">Total</td>
                     <td></td>
-                    <td style="padding:8px 0; text-align:right; font-weight:600">${gbp(session.amount_total)}</td>
+                    <td style="padding:8px 0; text-align:right; font-weight:600">${gbp(
+                      session.amount_total
+                    )}</td>
                   </tr>
                 </table>
                 <p style="margin:12px 0 0 0; font-size:12px; color:#52525b;">A full receipt has been issued by Stripe.</p>
@@ -238,6 +255,7 @@ export async function POST(req: Request) {
       }
     }
 
+    // Always ack (adjust to 500 if you want Stripe retries)
     return NextResponse.json({ received: true });
   } catch (e: any) {
     console.error("[stripe:webhook] handler error:", e?.message || e);
