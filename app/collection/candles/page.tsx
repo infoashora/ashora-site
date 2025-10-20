@@ -2,7 +2,7 @@
 import { PRODUCTS, type Product } from "@/app/product/content";
 
 const TITLE = "Candles";
-const SUB = "Hand-poured, vegan waxâ€”each aligned to a specific intention.";
+const SUB = "Hand-poured, vegan wax—each aligned to a specific intention.";
 
 function imgFor(p: Product) {
   const map: Record<string, string> = {
@@ -11,16 +11,30 @@ function imgFor(p: Product) {
     "wealth-abundance": "/intention/wealth-abundance.jpg",
     "peace-healing": "/intention/peace-healing.jpg",
   };
-  return p.img || map[p.intention] || "/hero/ashora-hero-1.jpg";
+  // Prefer explicit product images; fall back to intention image; final fallback to hero
+  return p.image || p.images?.[0] || (p.intention ? map[p.intention] : undefined) || "/hero/ashora-hero-1.jpg";
 }
 
+const KIND_LABEL: Record<Product["kind"], string> = {
+  "candle": "Candle",
+  "herb-box": "Herb Box",
+  "ritual-box": "Ritual Box",
+};
+
 export default function CandlesCollectionPage() {
-  const items = PRODUCTS.filter((p) => p.kind === "Candle");
+  // match your Product.kind union ('candle' in lowercase)
+  const items = PRODUCTS.filter((p) => p.kind === "candle");
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <nav className="text-sm text-zinc-600">
-        <Link href="/" className="underline decoration-amber-300 underline-offset-4 hover:text-zinc-800">Home</Link>{" / "}
+        <Link
+          href="/"
+          className="underline decoration-amber-300 underline-offset-4 hover:text-zinc-800"
+        >
+          Home
+        </Link>
+        {" / "}
         <span className="text-zinc-800">{TITLE}</span>
       </nav>
 
@@ -33,7 +47,7 @@ export default function CandlesCollectionPage() {
         {items.map((p) => (
           <Link
             key={p.handle}
-            href={p.href}
+            href={`/product/${p.handle}`}
             className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-[#D1A954] hover:shadow-md"
           >
             <div className="relative aspect-square w-full overflow-hidden">
@@ -45,10 +59,16 @@ export default function CandlesCollectionPage() {
               />
             </div>
             <div className="p-4">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">{p.kind}</div>
+              <div className="text-xs uppercase tracking-wide text-zinc-500">
+                {KIND_LABEL[p.kind]}
+              </div>
               <h3 className="mt-1 line-clamp-1 font-medium text-zinc-900">{p.title}</h3>
-              {p.priceText && <div className="mt-1 text-sm text-zinc-700">{p.priceText}</div>}
-              <div className="mt-2 text-sm text-zinc-600 transition group-hover:text-[#D1A954]">View details â†’</div>
+              {p.priceText && (
+                <div className="mt-1 text-sm text-zinc-700">{p.priceText}</div>
+              )}
+              <div className="mt-2 text-sm text-zinc-600 transition group-hover:text-[#D1A954]">
+                View details →
+              </div>
             </div>
           </Link>
         ))}
