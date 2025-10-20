@@ -1,25 +1,23 @@
 ﻿// app/api/stripe/webhook/route.ts
-import Stripe from "stripe";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+import Stripe from "stripe";
 import { Resend } from "resend";
 import { promises as fs } from "fs";
 import path from "path";
-
-// Import catalogue to help resolve handles by title when metadata is missing
 import { PRODUCTS_MAP } from "@/app/product/content";
 
-export const runtime = "nodejs"; // Stripe requires Node runtime (not Edge)
+export const runtime = "nodejs";              // ensure Node runtime (fs/path support)
+export const dynamic = "force-dynamic";       // never try to prerender this route
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2024-06-20",
+});
 
-// ---------- Helpers ----------
+// ---------- utils ----------
 function gbp(pence?: number | null) {
   if (typeof pence !== "number") return "—";
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(pence / 100);
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 const safe = (v?: string | null) => (v ?? "").toString();
 
@@ -28,95 +26,64 @@ const STOCK_PATH = path.join(STOCK_DIR, "stock.json");
 
 type StockMap = Record<string, number>; // handle -> stock (override)
 
-// Ensure data dir exists
 async function ensureStockDir() {
   await fs.mkdir(STOCK_DIR, { recursive: true }).catch(() => {});
 }
-
 async function readStock(): Promise<StockMap> {
   try {
     const raw = await fs.readFile(STOCK_PATH, "utf8");
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") return parsed as StockMap;
-  } catch {
-    /* missing or bad file — fall through */
-  }
+  } catch {}
   return {};
 }
-
 async function writeStock(map: StockMap) {
   await ensureStockDir();
   await fs.writeFile(STOCK_PATH, JSON.stringify(map, null, 2), "utf8");
 }
 
-// Resolve a product handle from a line item using multiple fallbacks
 function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
-  // Prefer metadata on expanded product or price
-  const price = (li?.price as Stripe.Price | null) ?? null;
-  const prod = (price?.product as Stripe.Product | null) ?? null;
+  // prefer metadata on expanded product or price
+  const price = li.price ?? null;
+  const prod = (price && (price as any).product) ?? null;
 
-  // Safely read metadata.handle from either Price or Product
-  const prodMeta = (prod?.metadata as Record<string, unknown> | undefined) ?? undefined;
-  const priceMeta = (price?.metadata as Record<string, unknown> | undefined) ?? undefined;
   const metaHandle =
-    (prodMeta?.["handle"] as string | undefined) ||
-    (priceMeta?.["handle"] as string | undefined);
+    (prod?.metadata?.handle as string | undefined) ||
+    (price?.metadata?.handle as string | undefined);
 
-  if (metaHandle && PRODUCTS_MAP[metaHandle]) {
-    return metaHandle;
-  }
+  if (metaHandle && PRODUCTS_MAP[metaHandle]) return metaHandle;
 
-  // Fallback: try matching by Stripe product name or the line item description to our titles
-  const candidates = [
-    prod?.name || "",
-    li.description || "",
-    price?.nickname || "",
-  ]
-    .map((s) => s.trim())
+  // fallback: try names
+  const candidates = [prod?.name || "", li.description || "", price?.nickname || ""]
+    .map((s) => (s || "").trim())
     .filter(Boolean);
-
-  if (candidates.length > 0) {
-    const entries = Object.entries(PRODUCTS_MAP);
-    for (const [handle, p] of entries) {
-      if (!p || !p.title) continue;
+  if (candidates.length) {
+    for (const [handle, p] of Object.entries(PRODUCTS_MAP)) {
       const title = (p.title || "").trim().toLowerCase();
-      if (candidates.some((c) => c.toLowerCase() === title)) {
-        return handle;
-      }
+      if (candidates.some((c) => c.toLowerCase() === title)) return handle;
     }
   }
-
   return null;
 }
 
-// Decrement stock overrides for a set of handles/quantities
 async function decrementStockFor(handles: Array<{ handle: string; qty: number }>) {
-  if (handles.length === 0) return;
-
+  if (!handles.length) return;
   const current = await readStock();
 
-  // Seed current map with catalogue defaults if missing
-  // so we start counting down from the catalogue 'stock' value
   for (const { handle } of handles) {
     if (current[handle] === undefined) {
       const cat = PRODUCTS_MAP[handle];
-      if (cat && typeof cat.stock === "number") {
-        current[handle] = cat.stock;
-      }
+      if (cat && typeof cat.stock === "number") current[handle] = cat.stock;
     }
   }
-
-  // Decrement
   for (const { handle, qty } of handles) {
-    if (current[handle] === undefined) continue; // unknown product
-    const next = Math.max(0, (current[handle] ?? 0) - Math.max(1, qty));
-    current[handle] = next;
+    if (current[handle] === undefined) continue;
+    current[handle] = Math.max(0, (current[handle] ?? 0) - Math.max(1, qty));
   }
-
   await writeStock(current);
 }
 
-// ---------- Webhook ----------
+// ---------- webhook handler ----------
 export async function POST(req: Request) {
   const sig = headers().get("stripe-signature");
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -126,10 +93,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
-  // Raw body is required for signature verification
   const rawBody = await req.text();
-
   let event: Stripe.Event;
+
   try {
     event = Stripe.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err: any) {
@@ -141,18 +107,16 @@ export async function POST(req: Request) {
     if (event.type === "checkout.session.completed") {
       const sessionObj = event.data.object as Stripe.Checkout.Session;
 
-      // Retrieve full session (line items + payment intent). Useful for emails / n8n.
       const session = await stripe.checkout.sessions.retrieve(sessionObj.id, {
-        expand: ["line_items.data.price.product", "payment_intent", "customer_details"],
+        expand: ["line_items.data.price.product", "payment_intent", "customer_details", "shipping_details"],
       });
 
-      // Flatten/normalize line items
+      // flatten line items
       const lineItems = (session.line_items?.data || []).map((li) => {
-        const price = (li?.price as Stripe.Price | null) ?? null;
-        const prod = (price?.product as Stripe.Product | null) ?? null;
+        const prod = (li?.price as any)?.product ?? null;
         return {
           id: li.id,
-          description: li.description || prod?.name || price?.nickname || "ASHORA Item",
+          description: li.description || prod?.name || li.price?.nickname || "ASHORA Item",
           quantity: li.quantity ?? 1,
           unit_amount: li.price?.unit_amount ?? null,
           amount_subtotal: li.amount_subtotal ?? null,
@@ -163,41 +127,38 @@ export async function POST(req: Request) {
                 id: prod.id,
                 name: prod.name,
                 images: Array.isArray(prod.images) ? prod.images : [],
-                metadata: (prod.metadata as Record<string, unknown>) ?? {},
+                metadata: prod.metadata ?? {},
               }
             : null,
-          price_metadata: (price?.metadata as Record<string, unknown>) ?? {},
+          price_metadata: li.price?.metadata ?? {},
         };
       });
 
-      // === Decrement stock overrides ===============================
+      // stock decrement
       const decrements: Array<{ handle: string; qty: number }> = [];
       for (const li of session.line_items?.data || []) {
         const handle = resolveHandleFromLineItem(li);
         const qty = Math.max(1, li.quantity ?? 1);
-        if (handle) {
-          decrements.push({ handle, qty });
-        } else {
+        if (handle) decrements.push({ handle, qty });
+        else
           console.warn("[stock] Could not resolve handle for line item:", {
             li_id: li.id,
             desc: li.description,
           });
-        }
       }
-      if (decrements.length > 0) {
+      if (decrements.length) {
         try {
           await decrementStockFor(decrements);
         } catch (e: any) {
           console.error("[stock] decrement failed:", e?.message || e);
         }
       }
-      // =============================================================
 
-      // Build payload for n8n (unchanged except drop shipping_details)
+      // forward to n8n
       const payload = {
         type: event.type,
         event_id: event.id,
-        created: session.created, // unix seconds
+        created: session.created,
         session_id: session.id,
         payment_status: session.payment_status,
         payment_intent_id:
@@ -209,11 +170,11 @@ export async function POST(req: Request) {
         customer_email: session.customer_details?.email || session.customer_email || null,
         customer_name: session.customer_details?.name || null,
         customer_details: session.customer_details || null,
+        shipping_details: (session as any).shipping_details || null, // type not in older defs
         line_items: lineItems,
         metadata: session.metadata || {},
       };
 
-      // === Forward to n8n (primary) ===
       const n8nUrl = process.env.N8N_ORDER_WEBHOOK_URL;
       if (!n8nUrl) {
         console.warn("[n8n] N8N_ORDER_WEBHOOK_URL not set — skipping forward.");
@@ -232,7 +193,7 @@ export async function POST(req: Request) {
         }
       }
 
-      // === Optional: direct email via Resend (secondary/fallback) ===
+      // optional customer email via Resend
       try {
         const RESEND_API_KEY = process.env.RESEND_API_KEY;
         const toEmail = safe(session.customer_details?.email) || safe(session.customer_email);
@@ -285,11 +246,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // Acknowledge receipt so Stripe doesn't retry aggressively
+    // Always 200 so Stripe doesn’t retry aggressively (tune to your preference)
     return NextResponse.json({ received: true });
   } catch (e: any) {
     console.error("[stripe:webhook] handler error:", e?.message || e);
-    // Still 200 to avoid retry storms (you can switch to 500 if you want retries)
     return NextResponse.json({ received: true });
   }
 }
