@@ -6,30 +6,18 @@ import { useEffect, useContext } from "react";
 
 // Try both carts: Context + Zustand
 import { useCartStore } from "@/lib/cart-store";
-import { CartContext } from "@/app/components/CartProvider"; // 👈 import the context (not the throwing hook)
+import { CartContext } from "@/app/components/CartProvider";
 
 const GOLD = "#D1A954";
 const COUNT_KEY = "ashora:cartCount";
 
 function ClearCartOnMount() {
   const storeClear = useCartStore((s) => s.clear);
-
-  // ✅ Safe: useContext on the raw context returns `undefined` if provider isn't mounted.
-  // No try/catch, no conditional invocation — satisfies rules-of-hooks.
   const ctx = useContext(CartContext);
 
   useEffect(() => {
-    // 1) Clear Zustand cart (if present)
-    try {
-      storeClear?.();
-    } catch {}
-
-    // 2) Clear Context cart (if provider present)
-    try {
-      ctx?.clear?.();
-    } catch {}
-
-    // 3) Reset header badge fallback + notify listeners
+    try { storeClear?.(); } catch {}
+    try { ctx?.clear?.(); } catch {}
     try {
       localStorage.setItem(COUNT_KEY, "0");
       window.dispatchEvent(new CustomEvent("ashora:cart:set", { detail: { count: 0 } }));
@@ -41,16 +29,18 @@ function ClearCartOnMount() {
 
 export default function ThankYouPage() {
   return (
-    <main className="relative mx-auto max-w-3xl px-6 py-16">
+    // Ensure the main content is above any fixed overlays
+    <main className="relative z-10 mx-auto max-w-3xl px-6 py-16">
       <ClearCartOnMount />
 
-      {/* Soft gold background aura */}
+      {/* Soft gold background aura (kept behind; no pointer events) */}
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-70"
         style={{
           background:
             "radial-gradient(70% 40% at 50% 0%, rgba(209,169,84,0.08), transparent 60%), radial-gradient(40% 40% at 100% 10%, rgba(209,169,84,0.06), transparent 55%)",
         }}
+        aria-hidden
       />
 
       {/* Header */}
@@ -82,12 +72,13 @@ export default function ThankYouPage() {
             </ul>
           </div>
 
-          {/* Actions */}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Actions (force pointer events on, in case a parent overlay exists) */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center pointer-events-auto">
             <Link
               href="/shop"
               className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-sm transition"
               style={{ backgroundColor: GOLD }}
+              prefetch={false}
             >
               Continue Shopping
             </Link>
@@ -95,6 +86,7 @@ export default function ThankYouPage() {
               href="/faq"
               className="inline-flex flex-1 items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
               style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
+              prefetch={false}
             >
               View FAQs
             </Link>
