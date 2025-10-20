@@ -1,8 +1,8 @@
-﻿// components/Header.tsx
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useContext } from "react";
+import { useRouter } from "next/navigation";
 import { CartContext } from "@/app/components/CartProvider";
 
 const GOLD = "#D1A954";
@@ -14,6 +14,7 @@ function getStoredCount(): number {
   return v ? Math.max(0, parseInt(v, 10) || 0) : 0;
 }
 
+// Tiny bag icon for the cart
 function BagIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
@@ -36,6 +37,22 @@ export default function Header() {
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const deskMenuRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  // bulletproof nav (works even if something called preventDefault elsewhere)
+  function go(href: string) {
+    try {
+      router.push(href);
+      // if push is blocked by some rogue preventDefault, hard fallback a tick later
+      setTimeout(() => {
+        if (typeof window !== "undefined" && window.location.pathname !== href) {
+          window.location.assign(href);
+        }
+      }, 0);
+    } catch {
+      if (typeof window !== "undefined") window.location.assign(href);
+    }
+  }
 
   useEffect(() => {
     if (cart) {
@@ -72,7 +89,12 @@ export default function Header() {
     function onDocClick(e: MouseEvent) {
       if (!open) return;
       const t = e.target as Node;
-      if (btnRef.current?.contains(t) || sheetRef.current?.contains(t) || deskMenuRef.current?.contains(t)) return;
+      if (
+        btnRef.current?.contains(t) ||
+        sheetRef.current?.contains(t) ||
+        deskMenuRef.current?.contains(t)
+      )
+        return;
       setOpen(false);
     }
     function onEsc(e: KeyboardEvent) {
@@ -87,7 +109,10 @@ export default function Header() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-[#FAF8F4]/90 backdrop-blur">
+    <header
+      className="sticky top-0 z-[9999] border-b border-zinc-200 bg-[#FAF8F4]/90 backdrop-blur"
+      style={{ willChange: "transform" }}
+    >
       <div className="mx-auto grid max-w-6xl grid-cols-3 items-center px-4 py-2 sm:py-3 sm:px-6">
         {/* Left: Explore */}
         <div className="relative justify-self-start">
@@ -104,7 +129,14 @@ export default function Header() {
             <span className="hidden sm:inline">Explore ASHORA</span>
             <span className="sm:hidden">Explore</span>
             <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M6 9l6 6 6-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
 
@@ -112,16 +144,16 @@ export default function Header() {
           {open && (
             <div
               ref={deskMenuRef}
-              className="absolute left-0 mt-2 hidden w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:block z-50"
+              className="absolute left-0 mt-2 hidden w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:block"
               role="menu"
             >
               <div className="grid gap-1 p-2 text-sm">
-                <MenuLink href="/shop" label="Shop All" onClick={() => setOpen(false)} />
-                <MenuLink href="/quiz" label="Find Your Intention" onClick={() => setOpen(false)} />
-                <MenuLink href="/about" label="About" onClick={() => setOpen(false)} />
-                <MenuLink href="/faq" label="FAQ" onClick={() => setOpen(false)} />
-                <MenuLink href="/ritual-faqs" label="Ritual FAQs" onClick={() => setOpen(false)} />
-                <MenuLink href="/custom-orders" label="Custom Orders" onClick={() => setOpen(false)} />
+                <MenuButton label="Shop All" onClick={() => { setOpen(false); go("/shop"); }} />
+                <MenuButton label="Find Your Intention" onClick={() => { setOpen(false); go("/quiz"); }} />
+                <MenuButton label="About" onClick={() => { setOpen(false); go("/about"); }} />
+                <MenuButton label="FAQ" onClick={() => { setOpen(false); go("/faq"); }} />
+                <MenuButton label="Ritual FAQs" onClick={() => { setOpen(false); go("/ritual-faqs"); }} />
+                <MenuButton label="Custom Orders" onClick={() => { setOpen(false); go("/custom-orders"); }} />
               </div>
               <div className="border-t border-zinc-200 bg-zinc-50/50 px-3 py-2 text-xs text-zinc-600">
                 Explore ASHORA — Vegan, Eco-Conscious, Spiritual-Meets-Luxury
@@ -130,9 +162,9 @@ export default function Header() {
           )}
         </div>
 
-        {/* Center: Logo */}
+        {/* Center: Logo (can stay a normal Link since it works on every page) */}
         <div className="justify-self-center text-center leading-none">
-          <Link href="/" aria-label="ASHORA" className="group block">
+          <Link href="/" aria-label="ASHORA" className="group block" prefetch={false}>
             <span className="block text-base font-semibold tracking-[0.42em] text-zinc-900 transition group-hover:text-[var(--gold)] sm:text-lg sm:tracking-[0.45em]">
               A&nbsp;S&nbsp;H&nbsp;O&nbsp;R&nbsp;A
             </span>
@@ -142,10 +174,11 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Right: Cart + Join */}
+        {/* Right: Cart + Join (buttons that call go()) */}
         <div className="flex items-center justify-self-end gap-1.5 sm:gap-2">
-          <Link
-            href="/cart"
+          <button
+            type="button"
+            onClick={() => go("/cart")}
             className="relative inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
             style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
             title="Cart"
@@ -158,10 +191,11 @@ export default function Header() {
                 {count}
               </span>
             )}
-          </Link>
+          </button>
 
-          <Link
-            href="/join"
+          <button
+            type="button"
+            onClick={() => go("/join")}
             className="rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
             style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
             title="Join ASHORA"
@@ -169,7 +203,7 @@ export default function Header() {
           >
             <span className="sm:hidden">Join</span>
             <span className="hidden sm:inline">JOIN ASHORA</span>
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -180,7 +214,7 @@ export default function Header() {
             ref={sheetRef}
             role="menu"
             aria-label="Explore ASHORA"
-            className="border-t border-zinc-200 bg-white shadow-xl z-50"
+            className="border-t border-zinc-200 bg-white shadow-xl"
           >
             <div className="mx-auto max-w-6xl px-4 py-3">
               <div className="mb-2 flex items-center justify-between">
@@ -195,12 +229,12 @@ export default function Header() {
                 </button>
               </div>
               <div className="grid gap-1">
-                <MenuLink href="/shop" label="Shop All" onClick={() => setOpen(false)} />
-                <MenuLink href="/quiz" label="Find Your Intention" onClick={() => setOpen(false)} />
-                <MenuLink href="/about" label="About" onClick={() => setOpen(false)} />
-                <MenuLink href="/faq" label="FAQ" onClick={() => setOpen(false)} />
-                <MenuLink href="/ritual-faqs" label="Ritual FAQs" onClick={() => setOpen(false)} />
-                <MenuLink href="/custom-orders" label="Custom Orders" onClick={() => setOpen(false)} />
+                <MenuButton label="Shop All" onClick={() => { setOpen(false); go("/shop"); }} />
+                <MenuButton label="Find Your Intention" onClick={() => { setOpen(false); go("/quiz"); }} />
+                <MenuButton label="About" onClick={() => { setOpen(false); go("/about"); }} />
+                <MenuButton label="FAQ" onClick={() => { setOpen(false); go("/faq"); }} />
+                <MenuButton label="Ritual FAQs" onClick={() => { setOpen(false); go("/ritual-faqs"); }} />
+                <MenuButton label="Custom Orders" onClick={() => { setOpen(false); go("/custom-orders"); }} />
               </div>
             </div>
           </div>
@@ -210,27 +244,32 @@ export default function Header() {
   );
 }
 
-function MenuLink({
-  href,
+function MenuButton({
   label,
   onClick,
 }: {
-  href: string;
   label: string;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
   return (
-    <Link
-      href={href}
-      role="menuitem"
+    <button
+      type="button"
       onClick={onClick}
-      className="flex items-center justify-between rounded-md px-2 py-2 text-zinc-800 transition hover:bg-amber-50 hover:text-[var(--gold)]"
+      role="menuitem"
+      className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-zinc-800 transition hover:bg-amber-50 hover:text-[var(--gold)]"
       style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
     >
       <span>{label}</span>
       <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M9 6l6 6-6 6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
-    </Link>
+    </button>
   );
 }
