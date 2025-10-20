@@ -10,6 +10,7 @@ type Props = {
   /** Pass the known stock when you have it (e.g., on the PDP). */
   stock?: number;
   className?: string;
+  style?: React.CSSProperties; // NEW: allow CSS vars / inline styles
   children?: React.ReactNode;
 };
 
@@ -18,6 +19,7 @@ export default function AddToCartButton({
   qty = 1,
   stock,
   className,
+  style,
   children,
 }: Props) {
   const { items, add } = useCart();
@@ -75,6 +77,7 @@ export default function AddToCartButton({
           className ??
           "h-11 w-full rounded-md bg-[var(--gold)] text-white font-medium hover:opacity-90 transition disabled:cursor-not-allowed disabled:opacity-60"
         }
+        style={style} // forward inline styles (e.g., CSS vars)
         title={soldOut ? "Sold out" : undefined}
       >
         {children ?? (soldOut ? "Sold out" : "Add to Cart")}
