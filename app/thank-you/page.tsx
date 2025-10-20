@@ -29,8 +29,8 @@ function ClearCartOnMount() {
 
 export default function ThankYouPage() {
   return (
-    // Ensure the main content is above any fixed overlays
-    <main className="relative z-10 mx-auto max-w-3xl px-6 py-16">
+    // Force a new stacking context above any stray overlays/backdrops
+    <main className="relative z-[99999] isolate pointer-events-auto mx-auto max-w-3xl px-6 py-16">
       <ClearCartOnMount />
 
       {/* Soft gold background aura (kept behind; no pointer events) */}
@@ -49,7 +49,7 @@ export default function ThankYouPage() {
           Thank You for Your Order
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Your purchase has been received and will be prepared with care, love & intention.
+          Your purchase has been received and will be prepared with care, love &amp; intention.
         </p>
       </header>
 
@@ -72,8 +72,8 @@ export default function ThankYouPage() {
             </ul>
           </div>
 
-          {/* Actions (force pointer events on, in case a parent overlay exists) */}
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center pointer-events-auto">
+          {/* Actions */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/shop"
               className="inline-flex flex-1 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-sm transition"
