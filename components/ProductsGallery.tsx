@@ -2,21 +2,33 @@
 
 import { useMemo, useState } from "react";
 import ProductCard from "./ProductCard";
-import type { Product } from "../data/products";
+import type { Product } from "@/app/product/content";
 
 type Props = {
-  items: Product[];
+  items: Product[];         // Use central Product shape
   title?: string;
-  anchorId?: string; // adds id + scroll margin for anchored jumps
+  anchorId?: string;        // adds id + scroll margin for anchored jumps
 };
 
 type SortKey = "featured" | "price-asc" | "price-desc" | "name-asc";
 
+const INTENTION_LABEL: Record<NonNullable<Product["intention"]>, string> = {
+  "manifestation": "Manifestation",
+  "love-self-love": "Love & Self-Love",
+  "wealth-abundance": "Wealth & Abundance",
+  "peace-healing": "Peace & Healing",
+};
+
 export default function ProductsGallery({ items, title, anchorId }: Props) {
   // preserve original order for "featured"
   const keyed = useMemo(() => items.map((p, i) => ({ p, i })), [items]);
-  const intentions = useMemo(() => {
-    const set = new Set(items.map((p) => p.intention));
+
+  const intentionOptions = useMemo(() => {
+    const set = new Set(
+      items
+        .map((p) => p.intention)
+        .filter((v): v is NonNullable<Product["intention"]> => Boolean(v))
+    );
     return ["All", ...Array.from(set)];
   }, [items]);
 
@@ -24,17 +36,25 @@ export default function ProductsGallery({ items, title, anchorId }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>("featured");
 
   const filtered = useMemo(() => {
-    const base = intent === "All" ? keyed : keyed.filter((k) => k.p.intention === intent);
+    const base =
+      intent === "All"
+        ? keyed
+        : keyed.filter(
+            (k) =>
+              k.p.intention &&
+              k.p.intention.toString() === intent
+          );
+
     const arr = [...base];
     switch (sortBy) {
       case "price-asc":
-        arr.sort((a, b) => a.p.price - b.p.price);
+        arr.sort((a, b) => a.p.pricePence - b.p.pricePence);
         break;
       case "price-desc":
-        arr.sort((a, b) => b.p.price - a.p.price);
+        arr.sort((a, b) => b.p.pricePence - a.p.pricePence);
         break;
       case "name-asc":
-        arr.sort((a, b) => a.p.name.localeCompare(b.p.name));
+        arr.sort((a, b) => a.p.title.localeCompare(b.p.title));
         break;
       default:
         // featured = original order via index
@@ -60,21 +80,25 @@ export default function ProductsGallery({ items, title, anchorId }: Props) {
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Chips */}
         <div className="flex flex-wrap gap-2">
-          {intentions.map((name) => {
+          {intentionOptions.map((name) => {
             const active = intent === name;
+            const label =
+              name === "All"
+                ? "All"
+                : INTENTION_LABEL[name as keyof typeof INTENTION_LABEL] ?? name;
             return (
               <button
                 key={name}
                 onClick={() => setIntent(name)}
                 className={
-                  "px-3 py-1.5 rounded-full text-sm " +
+                  "rounded-full px-3 py-1.5 text-sm " +
                   (active
                     ? "bg-ink text-white"
                     : "bg-parchment ring-1 ring-ink/10 hover:text-gold")
                 }
                 aria-pressed={active}
               >
-                {name}
+                {label}
               </button>
             );
           })}
@@ -94,7 +118,7 @@ export default function ProductsGallery({ items, title, anchorId }: Props) {
             <option value="featured">Featured</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
-            <option value="name-asc">Name: Aâ€“Z</option>
+            <option value="name-asc">Name: A–Z</option>
           </select>
         </div>
       </div>
@@ -102,10 +126,9 @@ export default function ProductsGallery({ items, title, anchorId }: Props) {
       {/* Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((p) => (
-          <ProductCard key={p.id} product={p} contain showBadge quickAdd />
+          <ProductCard key={p.handle} product={p} variant="compact" />
         ))}
       </div>
     </section>
   );
 }
-
