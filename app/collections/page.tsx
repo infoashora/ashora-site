@@ -1,12 +1,12 @@
 ﻿// app/collections/page.tsx
 import ProductCard from "../../components/ProductCard";
 import ShopByIntention from "../../components/ShopByIntention";
-import { products } from "../../data/products";
+import { PRODUCTS } from "@/app/product/content";
 
 export const metadata = {
   title: "Shop All | ASHORA",
   description:
-    "Browse all ASHORA productsâ€”intention candles, ritual boxes, and herb boxes crafted for ritual.",
+    "Browse all ASHORA products—intention candles, ritual boxes, and herb boxes crafted for ritual.",
 };
 
 export default function CollectionsPage() {
@@ -20,8 +20,8 @@ export default function CollectionsPage() {
         </h1>
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
+          {PRODUCTS.map((p) => (
+            <ProductCard key={p.handle} product={p} />
           ))}
         </div>
       </section>
