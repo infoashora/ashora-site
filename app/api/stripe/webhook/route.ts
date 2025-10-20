@@ -143,7 +143,7 @@ export async function POST(req: Request) {
 
       // Retrieve full session (line items + payment intent). Useful for emails / n8n.
       const session = await stripe.checkout.sessions.retrieve(sessionObj.id, {
-        expand: ["line_items.data.price.product", "payment_intent", "customer_details", "shipping_details"],
+        expand: ["line_items.data.price.product", "payment_intent", "customer_details"],
       });
 
       // Flatten/normalize line items
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
       }
       // =============================================================
 
-      // Build payload for n8n (unchanged)
+      // Build payload for n8n (unchanged except drop shipping_details)
       const payload = {
         type: event.type,
         event_id: event.id,
@@ -209,7 +209,6 @@ export async function POST(req: Request) {
         customer_email: session.customer_details?.email || session.customer_email || null,
         customer_name: session.customer_details?.name || null,
         customer_details: session.customer_details || null,
-        shipping_details: session.shipping_details || null,
         line_items: lineItems,
         metadata: session.metadata || {},
       };
