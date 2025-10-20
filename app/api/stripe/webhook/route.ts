@@ -52,15 +52,15 @@ async function writeStock(map: StockMap) {
 // Resolve a product handle from a line item using multiple fallbacks
 function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
   // Prefer metadata on expanded product or price
-  // @ts-expect-error expanded via 'expand' below
-  const prod: Stripe.Product | null = li?.price?.product ?? null;
-  const price: Stripe.Price | null = li?.price ?? null;
+  const price = (li?.price as Stripe.Price | null) ?? null;
+  const prod = (price?.product as Stripe.Product | null) ?? null;
 
+  // Safely read metadata.handle from either Price or Product
+  const prodMeta = (prod?.metadata as Record<string, unknown> | undefined) ?? undefined;
+  const priceMeta = (price?.metadata as Record<string, unknown> | undefined) ?? undefined;
   const metaHandle =
-    // @ts-expect-error Stripe type doesn't narrow metadata value types
-    (prod?.metadata?.handle as string | undefined) ||
-    // @ts-expect-error Stripe type doesn't narrow metadata value types
-    (price?.metadata?.handle as string | undefined);
+    (prodMeta?.["handle"] as string | undefined) ||
+    (priceMeta?.["handle"] as string | undefined);
 
   if (metaHandle && PRODUCTS_MAP[metaHandle]) {
     return metaHandle;
@@ -68,9 +68,9 @@ function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
 
   // Fallback: try matching by Stripe product name or the line item description to our titles
   const candidates = [
-    (prod && prod.name) || "",
+    prod?.name || "",
     li.description || "",
-    (price && price.nickname) || "",
+    price?.nickname || "",
   ]
     .map((s) => s.trim())
     .filter(Boolean);
@@ -148,11 +148,11 @@ export async function POST(req: Request) {
 
       // Flatten/normalize line items
       const lineItems = (session.line_items?.data || []).map((li) => {
-        // @ts-expect-error expanded at runtime via expand
-        const prod: Stripe.Product | null = li?.price?.product ?? null;
+        const price = (li?.price as Stripe.Price | null) ?? null;
+        const prod = (price?.product as Stripe.Product | null) ?? null;
         return {
           id: li.id,
-          description: li.description || prod?.name || li.price?.nickname || "ASHORA Item",
+          description: li.description || prod?.name || price?.nickname || "ASHORA Item",
           quantity: li.quantity ?? 1,
           unit_amount: li.price?.unit_amount ?? null,
           amount_subtotal: li.amount_subtotal ?? null,
@@ -163,11 +163,10 @@ export async function POST(req: Request) {
                 id: prod.id,
                 name: prod.name,
                 images: Array.isArray(prod.images) ? prod.images : [],
-                // @ts-expect-error metadata may carry handle
-                metadata: prod.metadata ?? {},
+                metadata: (prod.metadata as Record<string, unknown>) ?? {},
               }
             : null,
-          price_metadata: li.price?.metadata ?? {},
+          price_metadata: (price?.metadata as Record<string, unknown>) ?? {},
         };
       });
 
