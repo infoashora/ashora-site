@@ -9,14 +9,13 @@ import { CartContext } from "@/app/components/CartProvider";
 const GOLD = "#D1A954";
 const COUNT_KEY = "ashora:cartCount";
 
-/** Blocks global click interceptors by stopping events in the capture phase. */
+/** Blocks global click interceptors (only within thank-you content). */
 function ClickFirewall({ children }: { children: React.ReactNode }) {
   const stopCapture = useCallback((e: React.SyntheticEvent) => {
-    e.stopPropagation(); // don’t preventDefault; just prevent bubbling to document
+    e.stopPropagation();
   }, []);
   return (
     <div
-      id="thankyou-click-firewall"
       onClickCapture={stopCapture}
       onMouseDownCapture={stopCapture}
       onTouchStartCapture={stopCapture}
@@ -45,31 +44,30 @@ function ClearCartOnMount() {
 
 export default function ThankYouPage() {
   return (
-    {/* Put the page content below the header (z-10). Header uses z-40. */}
-    <main className="relative z-10 isolate pointer-events-auto mx-auto max-w-3xl px-6 py-16">
+    <main className="relative mx-auto max-w-3xl px-6 py-16">
+      <ClearCartOnMount />
+
+      {/* Soft gold background aura */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        style={{
+          background:
+            "radial-gradient(70% 40% at 50% 0%, rgba(209,169,84,0.08), transparent 60%), radial-gradient(40% 40% at 100% 10%, rgba(209,169,84,0.06), transparent 55%)",
+        }}
+      />
+
+      {/* Header */}
+      <header className="text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+          Thank You for Your Order
+        </h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Your purchase has been received and will be prepared with care, love &amp; intention.
+        </p>
+      </header>
+
+      {/* 🔒 Firewall only around interactive section */}
       <ClickFirewall>
-        <ClearCartOnMount />
-
-        {/* Soft gold background aura (behind; no pointer events) */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-70"
-          style={{
-            background:
-              "radial-gradient(70% 40% at 50% 0%, rgba(209,169,84,0.08), transparent 60%), radial-gradient(40% 40% at 100% 10%, rgba(209,169,84,0.06), transparent 55%)",
-          }}
-          aria-hidden
-        />
-
-        {/* Header */}
-        <header className="text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
-            Thank You for Your Order
-          </h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            Your purchase has been received and will be prepared with care, love &amp; intention.
-          </p>
-        </header>
-
         {/* Confirmation card */}
         <section className="mx-auto mt-8 max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
           <div className="border-b border-zinc-200 bg-zinc-50/50 px-6 py-4">
