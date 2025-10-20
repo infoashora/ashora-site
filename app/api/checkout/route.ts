@@ -1,4 +1,6 @@
 ﻿// app/api/checkout/route.ts
+export const runtime = "nodejs";
+
 import Stripe from "stripe";
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
@@ -6,9 +8,7 @@ if (!stripeSecret) {
   console.warn("[checkout] STRIPE_SECRET_KEY missing at boot");
 }
 
-const stripe = new Stripe(stripeSecret as string, {
-  apiVersion: "2024-06-20",
-});
+const stripe = new Stripe(stripeSecret as string);
 
 type CartItem = {
   handle: string;
@@ -30,7 +30,10 @@ export async function POST(req: Request) {
       hdrOrigin ||
       "http://localhost:3000";
 
-    const body = (await req.json()) as { items: CartItem[]; customerEmail?: string };
+    const body = (await req.json()) as {
+      items: CartItem[];
+      customerEmail?: string;
+    };
 
     if (!body?.items?.length) {
       return new Response("No items in cart", { status: 400 });
@@ -43,7 +46,6 @@ export async function POST(req: Request) {
       return `${origin}/${url}`;
     };
 
-    // Build Stripe line items
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
         quantity: Math.max(1, Number(i.quantity || 1)),
@@ -58,7 +60,6 @@ export async function POST(req: Request) {
         },
       }));
 
-    // 🟡 TEMP: No shipping or address collection for £1 test
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       automatic_tax: { enabled: false },
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
       customer_email: body.customerEmail || undefined,
       success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart?canceled=1`,
-      metadata: { source: "ashora_web_test" },
+      metadata: { source: "ashora_web_test" }
     });
 
     return Response.json({ url: session.url });
