@@ -14,7 +14,6 @@ function getStoredCount(): number {
   return v ? Math.max(0, parseInt(v, 10) || 0) : 0;
 }
 
-// Tiny bag icon for the cart
 function BagIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
@@ -113,7 +112,7 @@ export default function Header() {
           {open && (
             <div
               ref={deskMenuRef}
-              className="absolute left-0 mt-2 hidden w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:block"
+              className="absolute left-0 mt-2 hidden w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:block z-50"
               role="menu"
             >
               <div className="grid gap-1 p-2 text-sm">
@@ -121,7 +120,6 @@ export default function Header() {
                 <MenuLink href="/quiz" label="Find Your Intention" onClick={() => setOpen(false)} />
                 <MenuLink href="/about" label="About" onClick={() => setOpen(false)} />
                 <MenuLink href="/faq" label="FAQ" onClick={() => setOpen(false)} />
-                {/* added items */}
                 <MenuLink href="/ritual-faqs" label="Ritual FAQs" onClick={() => setOpen(false)} />
                 <MenuLink href="/custom-orders" label="Custom Orders" onClick={() => setOpen(false)} />
               </div>
@@ -144,9 +142,8 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Right: Cart + Join (compact on mobile) */}
+        {/* Right: Cart + Join */}
         <div className="flex items-center justify-self-end gap-1.5 sm:gap-2">
-          {/* CART: icon-only on mobile; text on sm+ */}
           <Link
             href="/cart"
             className="relative inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
@@ -163,7 +160,6 @@ export default function Header() {
             )}
           </Link>
 
-          {/* JOIN: short on mobile; full label on sm+ */}
           <Link
             href="/join"
             className="rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
@@ -184,7 +180,7 @@ export default function Header() {
             ref={sheetRef}
             role="menu"
             aria-label="Explore ASHORA"
-            className="border-t border-zinc-200 bg-white shadow-xl"
+            className="border-t border-zinc-200 bg-white shadow-xl z-50"
           >
             <div className="mx-auto max-w-6xl px-4 py-3">
               <div className="mb-2 flex items-center justify-between">
@@ -203,7 +199,6 @@ export default function Header() {
                 <MenuLink href="/quiz" label="Find Your Intention" onClick={() => setOpen(false)} />
                 <MenuLink href="/about" label="About" onClick={() => setOpen(false)} />
                 <MenuLink href="/faq" label="FAQ" onClick={() => setOpen(false)} />
-                {/* added items */}
                 <MenuLink href="/ritual-faqs" label="Ritual FAQs" onClick={() => setOpen(false)} />
                 <MenuLink href="/custom-orders" label="Custom Orders" onClick={() => setOpen(false)} />
               </div>

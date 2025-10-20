@@ -3,8 +3,6 @@
 
 import Link from "next/link";
 import { useEffect, useContext, useCallback } from "react";
-
-// Try both carts: Context + Zustand
 import { useCartStore } from "@/lib/cart-store";
 import { CartContext } from "@/app/components/CartProvider";
 
@@ -14,10 +12,8 @@ const COUNT_KEY = "ashora:cartCount";
 /** Blocks global click interceptors by stopping events in the capture phase. */
 function ClickFirewall({ children }: { children: React.ReactNode }) {
   const stopCapture = useCallback((e: React.SyntheticEvent) => {
-    // Do not prevent default, just stop the event from bubbling to document-level handlers.
-    e.stopPropagation();
+    e.stopPropagation(); // don’t preventDefault; just prevent bubbling to document
   }, []);
-
   return (
     <div
       id="thankyou-click-firewall"
@@ -49,12 +45,12 @@ function ClearCartOnMount() {
 
 export default function ThankYouPage() {
   return (
-    // Force a new stacking context above any stray overlays/backdrops
-    <main className="relative z-[99999] isolate pointer-events-auto mx-auto max-w-3xl px-6 py-16">
+    {/* Put the page content below the header (z-10). Header uses z-40. */}
+    <main className="relative z-10 isolate pointer-events-auto mx-auto max-w-3xl px-6 py-16">
       <ClickFirewall>
         <ClearCartOnMount />
 
-        {/* Soft gold background aura (kept behind; no pointer events) */}
+        {/* Soft gold background aura (behind; no pointer events) */}
         <div
           className="pointer-events-none absolute inset-0 -z-10 opacity-70"
           style={{
