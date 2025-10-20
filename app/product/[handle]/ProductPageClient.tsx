@@ -4,11 +4,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo } from "react";
-import { getProduct } from "../content";
+import { getProductByHandle } from "../content";
 import { useCart } from "../../components/CartProvider";
 
 export default function ProductPageClient({ handle }: { handle: string }) {
-  const product = useMemo(() => getProduct(handle), [handle]);
+  const product = useMemo(() => getProductByHandle(handle), [handle]);
   const { add } = useCart();
 
   if (!product) {
@@ -16,7 +16,10 @@ export default function ProductPageClient({ handle }: { handle: string }) {
       <div className="mx-auto max-w-5xl px-6 py-16">
         <h1 className="text-2xl font-semibold">Product not found</h1>
         <p className="mt-2 text-zinc-600">
-          This item isn’t available. <Link className="underline" href="/shop">Back to shop</Link>
+          This item isn’t available.{" "}
+          <Link className="underline decoration-amber-300 underline-offset-4" href="/shop">
+            Back to shop
+          </Link>
         </p>
       </div>
     );
@@ -60,14 +63,16 @@ export default function ProductPageClient({ handle }: { handle: string }) {
 
           <button
             onClick={() => add(product.handle)}
-            className="mt-6 h-12 rounded-md bg-amber-700 px-6 text-white transition hover:bg-amber-800"
+            className="mt-6 h-12 rounded-md bg-[var(--gold,#D1A954)] px-6 text-white transition hover:opacity-90"
             aria-label={`Add ${product.title} to cart`}
           >
             Add to Cart
           </button>
 
           <div className="mt-6 text-sm text-zinc-600">
-            <Link href="/shop" className="underline">Continue Shopping</Link>
+            <Link href="/shop" className="underline decoration-amber-300 underline-offset-4">
+              Continue Shopping
+            </Link>
           </div>
         </div>
       </div>
