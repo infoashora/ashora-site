@@ -7,12 +7,10 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PRODUCTS_MAP } from "@/app/product/content";
 
-export const runtime = "nodejs";              // ensure Node runtime (fs/path support)
-export const dynamic = "force-dynamic";       // never try to prerender this route
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-06-20",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
 // ---------- utils ----------
 function gbp(pence?: number | null) {
@@ -43,7 +41,6 @@ async function writeStock(map: StockMap) {
 }
 
 function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
-  // prefer metadata on expanded product or price
   const price = li.price ?? null;
   const prod = (price && (price as any).product) ?? null;
 
@@ -53,7 +50,6 @@ function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
 
   if (metaHandle && PRODUCTS_MAP[metaHandle]) return metaHandle;
 
-  // fallback: try names
   const candidates = [prod?.name || "", li.description || "", price?.nickname || ""]
     .map((s) => (s || "").trim())
     .filter(Boolean);
@@ -111,7 +107,6 @@ export async function POST(req: Request) {
         expand: ["line_items.data.price.product", "payment_intent", "customer_details", "shipping_details"],
       });
 
-      // flatten line items
       const lineItems = (session.line_items?.data || []).map((li) => {
         const prod = (li?.price as any)?.product ?? null;
         return {
@@ -134,7 +129,6 @@ export async function POST(req: Request) {
         };
       });
 
-      // stock decrement
       const decrements: Array<{ handle: string; qty: number }> = [];
       for (const li of session.line_items?.data || []) {
         const handle = resolveHandleFromLineItem(li);
@@ -154,7 +148,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // forward to n8n
       const payload = {
         type: event.type,
         event_id: event.id,
@@ -170,7 +163,7 @@ export async function POST(req: Request) {
         customer_email: session.customer_details?.email || session.customer_email || null,
         customer_name: session.customer_details?.name || null,
         customer_details: session.customer_details || null,
-        shipping_details: (session as any).shipping_details || null, // type not in older defs
+        shipping_details: (session as any).shipping_details || null,
         line_items: lineItems,
         metadata: session.metadata || {},
       };
@@ -193,7 +186,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // optional customer email via Resend
       try {
         const RESEND_API_KEY = process.env.RESEND_API_KEY;
         const toEmail = safe(session.customer_details?.email) || safe(session.customer_email);
@@ -246,7 +238,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Always 200 so Stripe doesn’t retry aggressively (tune to your preference)
     return NextResponse.json({ received: true });
   } catch (e: any) {
     console.error("[stripe:webhook] handler error:", e?.message || e);
