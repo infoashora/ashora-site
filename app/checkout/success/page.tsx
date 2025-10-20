@@ -1,11 +1,12 @@
-﻿// Server Component: fetches the Stripe session and shows a receipt-lite view
+﻿// app/checkout/success/page.tsx
+// Server Component: fetches the Stripe session and shows a receipt-lite view
 import Link from "next/link";
 import Stripe from "stripe";
 
 type Props = { searchParams?: { session_id?: string } };
 
 function formatGBP(pence?: number | null) {
-  if (typeof pence !== "number") return "â€”";
+  if (typeof pence !== "number") return "—";
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 
@@ -16,7 +17,7 @@ export default async function SuccessPage({ searchParams }: Props) {
   let lineItems: Stripe.ApiList<Stripe.LineItem>["data"] = [];
 
   if (sessionId && process.env.STRIPE_SECRET_KEY) {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: "2024-06-20" });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
     try {
       const s = await stripe.checkout.sessions.retrieve(sessionId, {
         expand: ["line_items.data.price.product"],
@@ -25,7 +26,7 @@ export default async function SuccessPage({ searchParams }: Props) {
       // @ts-expect-error: expanded line_items at runtime
       lineItems = s?.line_items?.data ?? [];
     } catch (e) {
-      // swallow â€” weâ€™ll just render a generic thank-you
+      // swallow — we’ll just render a generic thank-you
       console.error("Could not load Stripe session", e);
     }
   }
@@ -36,7 +37,7 @@ export default async function SuccessPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
       <header className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Thank you â€” your order is confirmed.</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Thank you — your order is confirmed.</h1>
         <p className="mt-2 text-zinc-600">
           {email ? (
             <>A confirmation has been sent to <span className="font-medium">{email}</span>.</>

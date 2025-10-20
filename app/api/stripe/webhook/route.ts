@@ -11,9 +11,7 @@ import { PRODUCTS_MAP } from "@/app/product/content";
 
 export const runtime = "nodejs"; // Stripe requires Node runtime (not Edge)
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-06-20",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
 // ---------- Helpers ----------
 function gbp(pence?: number | null) {
@@ -73,7 +71,9 @@ function resolveHandleFromLineItem(li: Stripe.LineItem): string | null {
     (prod && prod.name) || "",
     li.description || "",
     (price && price.nickname) || "",
-  ].map((s) => s.trim()).filter(Boolean);
+  ]
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   if (candidates.length > 0) {
     const entries = Object.entries(PRODUCTS_MAP);
@@ -172,7 +172,6 @@ export async function POST(req: Request) {
       });
 
       // === Decrement stock overrides ===============================
-      // Resolve handles from each line item, then decrement
       const decrements: Array<{ handle: string; qty: number }> = [];
       for (const li of session.line_items?.data || []) {
         const handle = resolveHandleFromLineItem(li);
