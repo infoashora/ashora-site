@@ -14,7 +14,7 @@ export default async function SuccessPage({ searchParams }: Props) {
   const sessionId = searchParams?.session_id;
 
   let session: Stripe.Checkout.Session | null = null;
-  let lineItems: Stripe.ApiList<Stripe.LineItem>["data"] = [];
+  let lineItems: Stripe.LineItem[] = [];
 
   if (sessionId && process.env.STRIPE_SECRET_KEY) {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
@@ -23,10 +23,12 @@ export default async function SuccessPage({ searchParams }: Props) {
         expand: ["line_items.data.price.product"],
       });
       session = s;
-      // @ts-expect-error: expanded line_items at runtime
-      lineItems = s?.line_items?.data ?? [];
+
+      // Safely read expanded line items (types don’t narrow automatically)
+      const maybeList = (s as unknown as { line_items?: Stripe.ApiList<Stripe.LineItem> }).line_items;
+      lineItems = maybeList?.data ?? [];
     } catch (e) {
-      // swallow — we’ll just render a generic thank-you
+      // swallow — we'll just render a generic thank-you
       console.error("Could not load Stripe session", e);
     }
   }
