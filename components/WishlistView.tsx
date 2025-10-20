@@ -4,6 +4,7 @@ import Link from "next/link";
 import ProductCard from "./ProductCard";
 import { useWishlistStore } from "../lib/wishlist-store";
 import { useCart } from "@/app/components/CartProvider";
+import { useUIStore } from "../lib/ui-store";
 import { PRODUCTS_MAP, type Product } from "@/app/product/content";
 
 /** Best-effort: derive a product handle from a legacy slug like "product/manifestation-candle" */
@@ -19,18 +20,16 @@ export default function WishlistView() {
   const clear = useWishlistStore((s) => s.clear);
   const items = Object.values(itemsMap);
 
-  const { add, open } = useCart(); // use unified cart provider
+  const { add } = useCart();                 // add to cart
+  const openCart = useUIStore((s) => s.openCart); // open cart UI drawer/panel
 
   // Resolve wishlist items to our central Product type where possible
   const resolved: Product[] = items
     .map((it) => {
-      // Try: explicit handle on item -> central catalogue
-      // Fallback: parse handle from legacy slug "product/<handle>"
       const h =
         (it as any).handle ||
         handleFromSlug(it.slug) ||
-        ""; // last resort: no match
-
+        "";
       return h && PRODUCTS_MAP[h] ? PRODUCTS_MAP[h] : undefined;
     })
     .filter(Boolean) as Product[];
@@ -51,9 +50,8 @@ export default function WishlistView() {
           <button
             onClick={() => {
               if (count === 0) return;
-              // Add one of each resolved product to cart
               resolved.forEach((p) => add(p.handle, 1));
-              open();
+              openCart();
             }}
             className={
               "btn " +
