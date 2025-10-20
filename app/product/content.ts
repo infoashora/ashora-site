@@ -195,7 +195,7 @@ export const PRODUCTS: Product[] = [
     intention: "manifestation",
     kind: "candle",
     descriptionHtml: DESCRIPTIONS["manifestation-candle"],
-    stock: 12,
+    stock: 10,
   },
   {
     handle: "love-self-love-candle",
@@ -213,7 +213,7 @@ export const PRODUCTS: Product[] = [
     intention: "love-self-love",
     kind: "candle",
     descriptionHtml: DESCRIPTIONS["love-self-love-candle"],
-    stock: 2,
+    stock: 10,
   },
   {
     handle: "wealth-abundance-candle",
@@ -231,7 +231,7 @@ export const PRODUCTS: Product[] = [
     intention: "wealth-abundance",
     kind: "candle",
     descriptionHtml: DESCRIPTIONS["wealth-abundance-candle"],
-    stock: 12,
+    stock: 10,
   },
   {
     handle: "peace-healing-candle",
@@ -249,7 +249,7 @@ export const PRODUCTS: Product[] = [
     intention: "peace-healing",
     kind: "candle",
     descriptionHtml: DESCRIPTIONS["peace-healing-candle"],
-    stock: 0,
+    stock: 10,
   },
 
   // Herb Boxes — £11.99 (with waysHtml)
@@ -258,13 +258,13 @@ export const PRODUCTS: Product[] = [
   title: "Manifestation Herb Box",
   image: "/products/manifestation-herb-box/01-hero.jpg",
   images: ["/products/manifestation-herb-box/01-hero.jpg"],
-  priceText: "£1.00",   // ⬅️ temporary
-  pricePence: 100,      // ⬅️ temporary (pence)
+  priceText: "£11.99",   // ⬅️ temporary
+  pricePence: 11.99,      // ⬅️ temporary (pence)
   badge: "Herb Box",
   intention: "manifestation",
   kind: "herb-box",
   descriptionHtml: DESCRIPTIONS["manifestation-herb-box"],
-  stock: 1,             // ⬅️ temporary
+  stock: 10,             // ⬅️ temporary
 },
   {
     handle: "love-self-love-herb-box",
@@ -278,7 +278,7 @@ export const PRODUCTS: Product[] = [
     kind: "herb-box",
     descriptionHtml: DESCRIPTIONS["love-self-love-herb-box"],
     waysHtml: WAYS["love-self-love-herb-box"],
-    stock: 20,
+    stock: 10,
   },
   {
     handle: "wealth-abundance-herb-box",
@@ -292,7 +292,7 @@ export const PRODUCTS: Product[] = [
     kind: "herb-box",
     descriptionHtml: DESCRIPTIONS["wealth-abundance-herb-box"],
     waysHtml: WAYS["wealth-abundance-herb-box"],
-    stock: 20,
+    stock: 10,
   },
   {
     handle: "peace-healing-herb-box",
@@ -306,7 +306,7 @@ export const PRODUCTS: Product[] = [
     kind: "herb-box",
     descriptionHtml: DESCRIPTIONS["peace-healing-herb-box"],
     waysHtml: WAYS["peace-healing-herb-box"],
-    stock: 20,
+    stock: 10,
   },
 
   // Ritual Boxes — £39.99
@@ -321,7 +321,7 @@ export const PRODUCTS: Product[] = [
     intention: "manifestation",
     kind: "ritual-box",
     descriptionHtml: DESCRIPTIONS["manifestation-ritual-box"],
-    stock: 8,
+    stock: 10,
   },
   {
     handle: "love-self-love-ritual-box",
@@ -334,7 +334,7 @@ export const PRODUCTS: Product[] = [
     intention: "love-self-love",
     kind: "ritual-box",
     descriptionHtml: DESCRIPTIONS["love-self-love-ritual-box"],
-    stock: 8,
+    stock: 10,
   },
   {
     handle: "wealth-abundance-ritual-box",
@@ -347,7 +347,7 @@ export const PRODUCTS: Product[] = [
     intention: "wealth-abundance",
     kind: "ritual-box",
     descriptionHtml: DESCRIPTIONS["wealth-abundance-ritual-box"],
-    stock: 8,
+    stock: 10,
   },
   {
     handle: "peace-healing-ritual-box",
@@ -360,7 +360,7 @@ export const PRODUCTS: Product[] = [
     intention: "peace-healing",
     kind: "ritual-box",
     descriptionHtml: DESCRIPTIONS["peace-healing-ritual-box"],
-    stock: 8,
+    stock: 10,
   },
 ];
 

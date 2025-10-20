@@ -1,8 +1,14 @@
 ﻿// app/api/checkout/route.ts
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-import type Stripe from "stripe";
+import Stripe from "stripe";
+
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+if (!stripeSecret) {
+  console.warn("[checkout] STRIPE_SECRET_KEY missing at boot");
+}
+
+const stripe = new Stripe(stripeSecret as string);
 
 type CartItem = {
   handle: string;
@@ -12,21 +18,11 @@ type CartItem = {
   image?: string;
 };
 
-// Lazy Stripe client (no top-level side effects during build)
-async function getStripe(): Promise<Stripe> {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
-    throw new Error("Missing STRIPE_SECRET_KEY");
-  }
-  const mod = await import("stripe");
-  const StripeCtor = mod.default;
-  // omit apiVersion to avoid TS literal narrowing conflicts
-  return new StripeCtor(key) as unknown as Stripe;
-}
-
 export async function POST(req: Request) {
   try {
-    const stripe = await getStripe();
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });
+    }
 
     const hdrOrigin = req.headers.get("origin");
     const origin =
@@ -51,7 +47,7 @@ export async function POST(req: Request) {
     };
 
     // Build Stripe line items
-    const line_items =
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
         quantity: Math.max(1, Number(i.quantity || 1)),
         price_data: {
@@ -63,17 +59,33 @@ export async function POST(req: Request) {
             images: i.image ? [abs(i.image)!] : undefined,
           },
         },
-      })) as unknown as Stripe.Checkout.SessionCreateParams.LineItem[];
+      }));
+
+    // Shipping: pull rate IDs from env if present
+    const rateIds = [
+      process.env.STRIPE_SHIP_STANDARD_ID, // e.g. "shr_..."
+      process.env.STRIPE_SHIP_EXPRESS_ID,  // optional
+    ].filter(Boolean) as string[];
+
+    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined =
+      rateIds.length ? rateIds.map((id) => ({ shipping_rate: id })) : undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       automatic_tax: { enabled: false },
+
+      // Collect shipping address (restrict to GB; add more if needed)
+      shipping_address_collection: { allowed_countries: ["GB"] },
+
+      // Only applied if you’ve set STRIPE_SHIP_* env vars
+      shipping_options,
+
       billing_address_collection: "auto",
       line_items,
       customer_email: body.customerEmail || undefined,
       success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart?canceled=1`,
-      metadata: { source: "ashora_web_test" },
+      metadata: { source: "ashora_web_live" },
     });
 
     return Response.json({ url: session.url });
