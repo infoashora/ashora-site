@@ -6,11 +6,6 @@ import { useState } from "react";
 import { useCart } from "@/app/components/CartProvider";
 import { PRODUCTS_MAP } from "@/app/product/content";
 
-export const metadata = {
-  title: "Your Cart · ASHORA",
-  description: "Review your items and proceed to checkout.",
-};
-
 const GOLD = "#D1A954";
 
 export default function CartPage() {
