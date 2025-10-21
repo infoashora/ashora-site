@@ -1,11 +1,12 @@
 ﻿// app/intention/content.ts
+
 export type IntentionKey =
   | "manifestation"
   | "love-self-love"
   | "wealth-abundance"
   | "peace-healing";
 
-type IntentionData = {
+export type IntentionData = {
   slug: IntentionKey;
   title: string;
   blurb: string;
@@ -16,7 +17,7 @@ type IntentionData = {
 };
 
 export const INTENTIONS: Record<IntentionKey, IntentionData> = {
-  "manifestation": {
+  manifestation: {
     slug: "manifestation",
     title: "Manifestation",
     blurb:
@@ -90,6 +91,10 @@ export const INTENTIONS: Record<IntentionKey, IntentionData> = {
   },
 };
 
-export function listIntentions() {
+export function listIntentions(): IntentionData[] {
   return Object.values(INTENTIONS);
+}
+
+export function getIntention(slug: IntentionKey): IntentionData {
+  return INTENTIONS[slug];
 }
