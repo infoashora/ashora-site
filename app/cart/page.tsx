@@ -36,7 +36,7 @@ export default function CartPage() {
           const prod = PRODUCTS_MAP[i.handle];
           return {
             handle: i.handle,
-            name: prod?.title || i.handle, // <-- use Product.title
+            name: prod?.title || i.handle,
             unitAmount: i.pricePence, // already in pence
             quantity: i.qty,
             image: prod?.image || prod?.images?.[0] || undefined,
@@ -114,7 +114,7 @@ export default function CartPage() {
           <section className="space-y-4">
             {items.map((i) => {
               const prod = PRODUCTS_MAP[i.handle];
-              const title = prod?.title || i.handle; // <-- use Product.title
+              const title = prod?.title || i.handle;
               const img = prod?.image || prod?.images?.[0];
               const price = i.pricePence;
 
@@ -195,6 +195,17 @@ export default function CartPage() {
                 <dd className="text-zinc-500">Added at checkout</dd>
               </div>
             </dl>
+
+            {/* Shipping options summary (no free shipping) */}
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50/60 p-3">
+              <div className="text-sm font-medium text-zinc-900">
+                Shipping options
+              </div>
+              <ul className="mt-1 space-y-1 text-sm text-zinc-700">
+                <li>• Standard — £3.99 · 2–4 business days</li>
+                <li>• Express — £6.99 · Next working day</li>
+              </ul>
+            </div>
 
             <button
               type="button"
