@@ -45,14 +45,13 @@ export async function POST(req: Request) {
       return `${origin}/${url}`;
     };
 
-    // Build Stripe line items (VAT added on top via automatic_tax)
+    // Line items (VAT added on top via automatic_tax)
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
         quantity: Math.max(1, Number(i.quantity || 1)),
         price_data: {
           currency: "gbp",
-          // IMPORTANT: tax_behavior 'exclusive' so VAT is ADDED at checkout
-          tax_behavior: "exclusive",
+          tax_behavior: "exclusive", // add VAT on top
           unit_amount: Math.max(1, Math.round(Number(i.unitAmount || 0))),
           product_data: {
             name: i.name,
@@ -63,56 +62,36 @@ export async function POST(req: Request) {
       }));
 
     // SHIPPING:
-    // Prefer Stripe "calculated shipping" (address-based) if enabled.
-    // Toggle with env STRIPE_SHIPPING_MODE=calculated
-    // Fallback: use fixed Shipping Rate IDs from env if present.
-    const wantsCalculated =
-      (process.env.STRIPE_SHIPPING_MODE || "").toLowerCase() === "calculated";
+    // If STRIPE_SHIPPING_MODE=calculated and STRIPE_SHIP_CALCULATED_ID is set (shr_...),
+    // we will use that calculated rate. Otherwise, fall back to fixed rate IDs.
+    const mode = (process.env.STRIPE_SHIPPING_MODE || "").toLowerCase();
+    const ids: string[] = [];
 
-    const fixedRateIds = [
-      process.env.STRIPE_SHIP_STANDARD_ID, // e.g. "shr_..."
-      process.env.STRIPE_SHIP_EXPRESS_ID, // optional
-    ].filter(Boolean) as string[];
-
-    let shipping_options:
-      | Stripe.Checkout.SessionCreateParams.ShippingOption[]
-      | undefined;
-
-    if (wantsCalculated) {
-      // Address-based (Stripe-calculated). Requires Stripe Shipping calculated rates to be enabled.
-      shipping_options = [
-        {
-          shipping_rate_data: {
-            type: "calculated",
-            display_name: "Delivery",
-            // Optional: show an estimate window on Checkout (purely cosmetic)
-            delivery_estimate: {
-              minimum: { unit: "business_day", value: 2 },
-              maximum: { unit: "business_day", value: 5 },
-            },
-          },
-        },
-      ];
-    } else if (fixedRateIds.length) {
-      // Use your predefined fixed shipping rates
-      shipping_options = fixedRateIds.map((id) => ({ shipping_rate: id }));
+    if (mode === "calculated" && process.env.STRIPE_SHIP_CALCULATED_ID) {
+      ids.push(process.env.STRIPE_SHIP_CALCULATED_ID);
     } else {
-      // If neither is configured, omit shipping_options and Stripe will still collect address
-      // (useful while you configure rates in Dashboard)
-      shipping_options = undefined;
+      if (process.env.STRIPE_SHIP_STANDARD_ID) {
+        ids.push(process.env.STRIPE_SHIP_STANDARD_ID);
+      }
+      if (process.env.STRIPE_SHIP_EXPRESS_ID) {
+        ids.push(process.env.STRIPE_SHIP_EXPRESS_ID);
+      }
     }
+
+    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined =
+      ids.length ? ids.map((id) => ({ shipping_rate: id })) : undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
 
       // VAT / taxes at checkout
       automatic_tax: { enabled: true },
-      tax_id_collection: { enabled: true }, // allow business customers to enter VAT ID
+      tax_id_collection: { enabled: true },
 
       // Collect shipping address (expand countries as needed)
       shipping_address_collection: { allowed_countries: ["GB"] },
 
-      shipping_options, // calculated or fixed, depending on env
+      shipping_options, // calculated via ID or fixed-ID fallback
 
       billing_address_collection: "auto",
       line_items,
