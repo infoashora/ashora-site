@@ -5,40 +5,53 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const images = [
-    "/hero/ashora-hero-1.jpg",
-    "/hero/ashora-hero-2.jpg",
-    "/hero/ashora-hero-3.jpg",
-    "/hero/ashora-hero-4.jpg",
-    "/hero/ashora-hero-5.jpg",
-    "/hero/ashora-hero-6.jpg",
+    "/hero/hero1.jpg",
+    "/hero/hero2.jpg",
+    "/hero/hero3.jpg",
+    "/hero/hero4.jpg",
+    "/hero/hero5.jpg",
+    "/hero/hero6.jpg",
   ];
 
   const [idx, setIdx] = useState(0);
+  const [fade, setFade] = useState(true);
+
   useEffect(() => {
-    const id = setInterval(() => setIdx((i) => (i + 1) % images.length), 6000);
+    const id = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % images.length);
+        setFade(true);
+      }, 500); // short fade-out before next image
+    }, 6500); // smooth 6.5s cycle
     return () => clearInterval(id);
   }, [images.length]);
 
   return (
     <main>
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-cover bg-center transition-[background-image] duration-700"
+          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out ${
+            fade ? "opacity-100" : "opacity-0"
+          }`}
           style={{ backgroundImage: `url(${images[idx]})` }}
         />
+
+        {/* Luxe dark overlay */}
         <div aria-hidden="true" className="absolute inset-0">
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/30" />
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
         </div>
 
+        {/* Hero Content */}
         <div className="relative mx-auto max-w-6xl px-6 py-24 text-center md:py-28">
           <h1 className="magic-heading text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl">
             Every Candle Holds A Little Magic
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-balance text-white/90">
-            ASHORA Isn’t Just A Brand Or Product — It’s A Service To The Soul.
+            ASHORA isn’t just a brand — it’s a service to the soul.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
@@ -62,14 +75,16 @@ export default function Home() {
             text-rendering: optimizeLegibility;
           }
           .magic-heading:hover {
-            text-shadow: 0 0 6px rgba(209, 169, 84, 0.4), 0 0 14px rgba(209, 169, 84, 0.35), 0 0 28px rgba(209, 169, 84, 0.25);
+            text-shadow: 0 0 6px rgba(209, 169, 84, 0.4),
+              0 0 14px rgba(209, 169, 84, 0.35),
+              0 0 28px rgba(209, 169, 84, 0.25);
             -webkit-text-stroke: 0.6px rgba(209, 169, 84, 0.9);
             text-stroke: 0.6px rgba(209, 169, 84, 0.9);
           }
         `}</style>
       </section>
 
-      {/* Benefits */}
+      {/* Benefits Bar */}
       <section className="border-y border-zinc-200 bg-white/70">
         <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-2 px-6 py-4 text-center text-sm text-zinc-700 sm:grid-cols-4">
           <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">Vegan</li>
@@ -108,7 +123,9 @@ export default function Home() {
               </div>
               <div className="p-4">
                 <h3 className="text-lg font-medium">{c.title}</h3>
-                <p className="mt-1 text-sm text-zinc-600">Explore {c.title.toLowerCase()} rituals & candles</p>
+                <p className="mt-1 text-sm text-zinc-600">
+                  Explore {c.title.toLowerCase()} rituals & candles
+                </p>
               </div>
             </Link>
           ))}

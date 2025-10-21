@@ -1,28 +1,36 @@
-﻿import Link from "next/link";
+﻿// app/collection/candles/page.tsx
+"use client";
+
+import Link from "next/link";
 import { PRODUCTS, type Product } from "@/app/product/content";
 
 const TITLE = "Candles";
 const SUB = "Hand-poured, vegan wax—each aligned to a specific intention.";
 
+const INTENTION_IMAGE: Record<string, string> = {
+  "manifestation": "/intention/manifestation.jpg",
+  "love-self-love": "/intention/love-self-love.jpg",
+  "wealth-abundance": "/intention/wealth-abundance.jpg",
+  "peace-healing": "/intention/peace-healing.jpg",
+};
+
 function imgFor(p: Product) {
-  const map: Record<string, string> = {
-    "manifestation": "/intention/manifestation.jpg",
-    "love-self-love": "/intention/love-self-love.jpg",
-    "wealth-abundance": "/intention/wealth-abundance.jpg",
-    "peace-healing": "/intention/peace-healing.jpg",
-  };
   // Prefer explicit product images; fall back to intention image; final fallback to hero
-  return p.image || p.images?.[0] || (p.intention ? map[p.intention] : undefined) || "/hero/ashora-hero-1.jpg";
+  return (
+    p.image ||
+    p.images?.[0] ||
+    (p.intention ? INTENTION_IMAGE[p.intention] : undefined) ||
+    "/hero/ashora-hero-1.jpg"
+  );
 }
 
 const KIND_LABEL: Record<Product["kind"], string> = {
-  "candle": "Candle",
+  candle: "Candle",
   "herb-box": "Herb Box",
   "ritual-box": "Ritual Box",
 };
 
 export default function CandlesCollectionPage() {
-  // match your Product.kind union ('candle' in lowercase)
   const items = PRODUCTS.filter((p) => p.kind === "candle");
 
   return (
@@ -44,34 +52,41 @@ export default function CandlesCollectionPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((p) => (
-          <Link
-            key={p.handle}
-            href={`/product/${p.handle}`}
-            className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-[#D1A954] hover:shadow-md"
-          >
-            <div className="relative aspect-square w-full overflow-hidden">
-              <img
-                src={imgFor(p)}
-                alt={p.title}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                loading="lazy"
-              />
-            </div>
-            <div className="p-4">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">
-                {KIND_LABEL[p.kind]}
+        {items.map((p) => {
+          const href = `/product/${p.handle}`;
+          const src = imgFor(p);
+          return (
+            <Link
+              key={p.handle}
+              href={href}
+              className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:border-[#D1A954] hover:shadow-md"
+            >
+              <div className="relative aspect-square w-full overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={p.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  loading="lazy"
+                />
               </div>
-              <h3 className="mt-1 line-clamp-1 font-medium text-zinc-900">{p.title}</h3>
-              {p.priceText && (
-                <div className="mt-1 text-sm text-zinc-700">{p.priceText}</div>
-              )}
-              <div className="mt-2 text-sm text-zinc-600 transition group-hover:text-[#D1A954]">
-                View details →
+              <div className="p-4">
+                <div className="text-xs uppercase tracking-wide text-zinc-500">
+                  {KIND_LABEL[p.kind]}
+                </div>
+                <h3 className="mt-1 line-clamp-1 font-medium text-zinc-900">
+                  {p.title}
+                </h3>
+                {p.priceText ? (
+                  <div className="mt-1 text-sm text-zinc-700">{p.priceText}</div>
+                ) : null}
+                <div className="mt-2 text-sm text-zinc-600 transition group-hover:text-[#D1A954]">
+                  View details →
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </main>
   );
