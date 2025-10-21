@@ -9,10 +9,13 @@ if (!stripeSecret) {
 }
 const stripe = new Stripe(stripeSecret as string);
 
+// HARD FALLBACK so shipping always appears (your £3.99 rate)
+const HARD_FALLBACK_SHIP_ID = "shr_1SKM0rK36YMrV9fBDriy8iHr";
+
 type CartItem = {
   handle: string;
   name: string;
-  unitAmount: number; // pence (e.g. 1999 = £19.99) — treated as TAX-EXCLUSIVE
+  unitAmount: number; // pence (e.g. 1999 = £19.99) — TAX-EXCLUSIVE
   quantity: number;
   image?: string;
 };
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
       return `${origin}/${url}`;
     };
 
-    // Line items (VAT added on top via automatic_tax)
+    // Build line items (VAT will be ADDED via automatic_tax)
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
         quantity: Math.max(1, Number(i.quantity || 1)),
@@ -61,25 +64,29 @@ export async function POST(req: Request) {
         },
       }));
 
-    // SHIPPING:
-    // If STRIPE_SHIPPING_MODE=calculated and STRIPE_SHIP_CALCULATED_ID is set (shr_...),
-    // we will use that calculated rate. Otherwise, fall back to fixed rate IDs.
+    // SHIPPING — build list of candidate rate IDs (envs first, then hard fallback)
     const mode = (process.env.STRIPE_SHIPPING_MODE || "").toLowerCase();
-    const ids: string[] = [];
+    const candidateIds: string[] = [];
 
+    // If you later create a CALCULATED rate in Stripe, you can use this:
     if (mode === "calculated" && process.env.STRIPE_SHIP_CALCULATED_ID) {
-      ids.push(process.env.STRIPE_SHIP_CALCULATED_ID);
+      candidateIds.push(process.env.STRIPE_SHIP_CALCULATED_ID);
     } else {
       if (process.env.STRIPE_SHIP_STANDARD_ID) {
-        ids.push(process.env.STRIPE_SHIP_STANDARD_ID);
+        candidateIds.push(process.env.STRIPE_SHIP_STANDARD_ID);
       }
       if (process.env.STRIPE_SHIP_EXPRESS_ID) {
-        ids.push(process.env.STRIPE_SHIP_EXPRESS_ID);
+        candidateIds.push(process.env.STRIPE_SHIP_EXPRESS_ID);
       }
     }
 
-    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined =
-      ids.length ? ids.map((id) => ({ shipping_rate: id })) : undefined;
+    // Hard fallback so shipping ALWAYS shows
+    if (candidateIds.length === 0) {
+      candidateIds.push(HARD_FALLBACK_SHIP_ID);
+    }
+
+    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] =
+      candidateIds.map((id) => ({ shipping_rate: id }));
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -88,10 +95,10 @@ export async function POST(req: Request) {
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
 
-      // Collect shipping address (expand countries as needed)
+      // Collect shipping address (expand list if you ship outside GB)
       shipping_address_collection: { allowed_countries: ["GB"] },
 
-      shipping_options, // calculated via ID or fixed-ID fallback
+      shipping_options, // guaranteed to contain at least the hard fallback
 
       billing_address_collection: "auto",
       line_items,
