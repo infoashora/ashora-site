@@ -36,7 +36,7 @@ export default function CartPage() {
           const prod = PRODUCTS_MAP[i.handle];
           return {
             handle: i.handle,
-            name: prod?.name || i.handle,
+            name: prod?.title || i.handle, // <-- use Product.title
             unitAmount: i.pricePence, // already in pence
             quantity: i.qty,
             image: prod?.image || prod?.images?.[0] || undefined,
@@ -114,7 +114,7 @@ export default function CartPage() {
           <section className="space-y-4">
             {items.map((i) => {
               const prod = PRODUCTS_MAP[i.handle];
-              const title = prod?.name || i.handle;
+              const title = prod?.title || i.handle; // <-- use Product.title
               const img = prod?.image || prod?.images?.[0];
               const price = i.pricePence;
 
