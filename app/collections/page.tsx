@@ -1,6 +1,6 @@
 ﻿// app/collections/page.tsx
-import ProductCard from "../../components/ProductCard";
-import ShopByIntention from "../../components/ShopByIntention";
+import ProductCard from "@/app/components/ProductCard";
+import ShopByIntention from "@/app/components/ShopByIntention";
 import { PRODUCTS } from "@/app/product/content";
 
 export const metadata = {
