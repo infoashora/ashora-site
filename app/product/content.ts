@@ -1,4 +1,4 @@
-﻿// app/product/content.ts 
+﻿// app/product/content.ts
 // Central product catalogue for ASHORA
 // - pricePence is an integer (in pence) used for math/checkout
 // - priceText is for display (with the £ sign)
@@ -315,7 +315,7 @@ export const PRODUCTS: Product[] = [
     handle: "manifestation-ritual-box",
     title: "Manifestation Ritual Box",
     image: "/products/manifestation-ritual-box/01-hero.jpg",
-    images: ["/products/manifestation-ritual-box/01-hero.jpg"],
+    images: ["/products/manifestation-ritual-box/01-hero.jpg"], // ✅ manifestation image
     priceText: "£39.99",
     pricePence: p(39.99),
     badge: "Ritual Box",
@@ -328,7 +328,7 @@ export const PRODUCTS: Product[] = [
     handle: "love-self-love-ritual-box",
     title: "Love & Self-Love Ritual Box",
     image: "/products/love-self-love-ritual-box/01-hero.jpg",
-    images: ["/products/love-self-love-ritual-box/01-hero.jpg"],
+    images: ["/products/love-self-love-ritual-box/01-hero.jpg"], // ✅ love & self-love image
     priceText: "£39.99",
     pricePence: p(39.99),
     badge: "Ritual Box",
