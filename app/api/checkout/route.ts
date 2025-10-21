@@ -9,16 +9,18 @@ if (!stripeSecret) {
 }
 const stripe = new Stripe(stripeSecret as string);
 
-// HARD FALLBACK so shipping always appears (your £3.99 rate)
-const HARD_FALLBACK_SHIP_ID = "shr_1SKM0rK36YMrV9fBDriy8iHr";
-
 type CartItem = {
   handle: string;
   name: string;
-  unitAmount: number; // pence (e.g. 1999 = £19.99) — TAX-EXCLUSIVE
+  unitAmount: number; // pence — TAX-EXCLUSIVE
   quantity: number;
   image?: string;
 };
+
+function toInt(x: string | undefined, fallback = 0): number {
+  const n = Number(x);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+}
 
 export async function POST(req: Request) {
   try {
@@ -41,64 +43,66 @@ export async function POST(req: Request) {
       return new Response("No items in cart", { status: 400 });
     }
 
-    const abs = (url?: string) => {
-      if (!url) return undefined;
-      if (/^https?:\/\//i.test(url)) return url;
-      if (url.startsWith("/")) return `${origin}${url}`;
-      return `${origin}/${url}`;
-    };
+    // Subtotal in pence (for free-shipping logic)
+    const subtotalPence = body.items.reduce((sum, it) => {
+      const unit = Math.max(1, Math.round(Number(it.unitAmount || 0)));
+      const qty = Math.max(1, Math.floor(it.quantity || 1));
+      return sum + unit * qty;
+    }, 0);
 
-    // Build line items (VAT will be ADDED via automatic_tax)
+    // Build Stripe line items (VAT added on top via automatic_tax)
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
-        quantity: Math.max(1, Number(i.quantity || 1)),
+        quantity: Math.max(1, Math.floor(i.quantity || 1)),
         price_data: {
           currency: "gbp",
-          tax_behavior: "exclusive", // add VAT on top
+          tax_behavior: "exclusive", // VAT on top
           unit_amount: Math.max(1, Math.round(Number(i.unitAmount || 0))),
           product_data: {
             name: i.name,
             metadata: { handle: i.handle },
-            images: i.image ? [abs(i.image)!] : undefined,
+            images:
+              i.image && /^https?:\/\//i.test(i.image)
+                ? [i.image]
+                : undefined,
           },
         },
       }));
 
-    // SHIPPING — build list of candidate rate IDs (envs first, then hard fallback)
-    const mode = (process.env.STRIPE_SHIPPING_MODE || "").toLowerCase();
-    const candidateIds: string[] = [];
+    // Shipping options:
+    // Always offer Standard + Express when configured.
+    // Offer Free only when subtotal >= FREE_SHIPPING_THRESHOLD_PENCE.
+    const standardId = process.env.STRIPE_SHIP_STANDARD_ID; // shr_...
+    const expressId = process.env.STRIPE_SHIP_EXPRESS_ID;   // shr_...
+    const freeId = process.env.STRIPE_SHIP_FREE_ID;         // shr_...
+    const freeThreshold = toInt(process.env.FREE_SHIPPING_THRESHOLD_PENCE, 0);
 
-    // If you later create a CALCULATED rate in Stripe, you can use this:
-    if (mode === "calculated" && process.env.STRIPE_SHIP_CALCULATED_ID) {
-      candidateIds.push(process.env.STRIPE_SHIP_CALCULATED_ID);
-    } else {
-      if (process.env.STRIPE_SHIP_STANDARD_ID) {
-        candidateIds.push(process.env.STRIPE_SHIP_STANDARD_ID);
-      }
-      if (process.env.STRIPE_SHIP_EXPRESS_ID) {
-        candidateIds.push(process.env.STRIPE_SHIP_EXPRESS_ID);
-      }
-    }
+    const shippingRateIds: string[] = [];
 
-    // Hard fallback so shipping ALWAYS shows
-    if (candidateIds.length === 0) {
-      candidateIds.push(HARD_FALLBACK_SHIP_ID);
-    }
+    const canOfferFree = !!freeId && subtotalPence >= freeThreshold;
+    if (canOfferFree) shippingRateIds.push(freeId!);
 
-    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] =
-      candidateIds.map((id) => ({ shipping_rate: id }));
+    if (standardId) shippingRateIds.push(standardId);
+    if (expressId) shippingRateIds.push(expressId);
+
+    // If nothing configured, leave undefined; Stripe will error if shipping is required but no options exist.
+    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined =
+      shippingRateIds.length
+        ? shippingRateIds.map((id) => ({ shipping_rate: id }))
+        : undefined;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
 
-      // VAT / taxes at checkout
+      // Taxes
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
 
-      // Collect shipping address (expand list if you ship outside GB)
+      // Ship to GB (add more ISO codes if you expand)
       shipping_address_collection: { allowed_countries: ["GB"] },
 
-      shipping_options, // guaranteed to contain at least the hard fallback
+      // Multiple options shown to the customer
+      shipping_options,
 
       billing_address_collection: "auto",
       line_items,
@@ -106,7 +110,11 @@ export async function POST(req: Request) {
 
       success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart?canceled=1`,
-      metadata: { source: "ashora_web_live" },
+      metadata: {
+        source: "ashora_web_live",
+        free_threshold_pence: String(freeThreshold),
+        subtotal_pence: String(subtotalPence),
+      },
     });
 
     return Response.json({ url: session.url });
