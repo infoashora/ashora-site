@@ -22,6 +22,16 @@ function toInt(x: string | undefined, fallback = 0): number {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
+/** Comma-separated helper for environment lists */
+function readCsv(name: string, fallback: string[]): string[] {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  return raw
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+}
+
 export async function POST(req: Request) {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -69,22 +79,41 @@ export async function POST(req: Request) {
         },
       }));
 
-    // ---------- Shipping options (robust) ----------
-    const standardId = process.env.STRIPE_SHIP_STANDARD_ID; // shr_...
-    const expressId = process.env.STRIPE_SHIP_EXPRESS_ID;   // shr_...
-    const freeId = process.env.STRIPE_SHIP_FREE_ID;         // shr_...
+    // ---------- Shipping options (UK + International) ----------
+    //
+    // IMPORTANT:
+    // - If you create Shipping Rates in the Stripe Dashboard and restrict them to certain countries,
+    //   Checkout will ONLY show rates that match the customer's shipping address country.
+    // - We wire both UK and International IDs here; Stripe will filter based on those restrictions.
+    //
+    // Existing UK envs (back-compat):
+    const legacyStandardId = process.env.STRIPE_SHIP_STANDARD_ID; // shr_...
+    const legacyExpressId = process.env.STRIPE_SHIP_EXPRESS_ID;   // shr_...
+
+    // New explicit envs:
+    const ukStandardId = process.env.STRIPE_SHIP_UK_STANDARD_ID || legacyStandardId;
+    const ukExpressId  = process.env.STRIPE_SHIP_UK_EXPRESS_ID  || legacyExpressId;
+
+    const intlStandardId = process.env.STRIPE_SHIP_INTL_STANDARD_ID;
+    const intlExpressId  = process.env.STRIPE_SHIP_INTL_EXPRESS_ID;
+
+    const freeId = process.env.STRIPE_SHIP_FREE_ID; // Optional (e.g., UK-only free rate with country restriction)
     const freeThreshold = toInt(process.env.FREE_SHIPPING_THRESHOLD_PENCE, 0);
+
+    // Fallback international amounts (used only if INTL IDs are missing)
+    const intlStdFallback = toInt(process.env.INTL_STANDARD_PENCE, 999);  // £9.99
+    const intlExpFallback = toInt(process.env.INTL_EXPRESS_PENCE, 1999); // £19.99
 
     const canOfferFree = !!freeId || (freeThreshold > 0 && subtotalPence >= freeThreshold);
 
-    // If IDs exist, use them. If not, inline-create the options so we never end up with none.
     const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] = [];
 
-    // Free (conditional)
+    // Free (conditional) — typically set up in Dashboard with country restriction (e.g., UK only)
     if (canOfferFree) {
       if (freeId && subtotalPence >= freeThreshold) {
         shipping_options.push({ shipping_rate: freeId });
       } else if (subtotalPence >= freeThreshold) {
+        // Fallback free rate (no country restriction in API form)
         shipping_options.push({
           shipping_rate_data: {
             display_name: "Free Shipping",
@@ -100,13 +129,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // Standard
-    if (standardId) {
-      shipping_options.push({ shipping_rate: standardId });
+    // UK: Standard
+    if (ukStandardId) {
+      shipping_options.push({ shipping_rate: ukStandardId });
     } else {
       shipping_options.push({
         shipping_rate_data: {
-          display_name: "Standard Delivery",
+          display_name: "UK Standard (2–4 business days)",
           type: "fixed_amount",
           fixed_amount: { currency: "gbp", amount: 399 },
           delivery_estimate: {
@@ -118,13 +147,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Express
-    if (expressId) {
-      shipping_options.push({ shipping_rate: expressId });
+    // UK: Express
+    if (ukExpressId) {
+      shipping_options.push({ shipping_rate: ukExpressId });
     } else {
       shipping_options.push({
         shipping_rate_data: {
-          display_name: "Express / Next-Day",
+          display_name: "UK Express / Next-Day",
           type: "fixed_amount",
           fixed_amount: { currency: "gbp", amount: 699 },
           delivery_estimate: {
@@ -136,6 +165,51 @@ export async function POST(req: Request) {
       });
     }
 
+    // International: Standard
+    if (intlStandardId) {
+      shipping_options.push({ shipping_rate: intlStandardId });
+    } else {
+      // Fallback international (shown to everyone if you don't restrict IDs in Dashboard)
+      shipping_options.push({
+        shipping_rate_data: {
+          display_name: "International Standard (Tracked)",
+          type: "fixed_amount",
+          fixed_amount: { currency: "gbp", amount: intlStdFallback },
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 5 },
+            maximum: { unit: "business_day", value: 10 },
+          },
+          tax_behavior: "exclusive",
+        },
+      });
+    }
+
+    // International: Express
+    if (intlExpressId) {
+      shipping_options.push({ shipping_rate: intlExpressId });
+    } else {
+      shipping_options.push({
+        shipping_rate_data: {
+          display_name: "International Express",
+          type: "fixed_amount",
+          fixed_amount: { currency: "gbp", amount: intlExpFallback },
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 2 },
+            maximum: { unit: "business_day", value: 5 },
+          },
+          tax_behavior: "exclusive",
+        },
+      });
+    }
+
+    // ---------- Allowed ship-to countries ----------
+    const allowedCountries = readCsv("ALLOWED_SHIP_COUNTRIES", [
+      // Sensible default list — edit via env
+      "GB","IE","US","CA","AU","NZ",
+      "FR","DE","NL","BE","ES","IT","PT","AT","DK","FI","SE","NO",
+      "CH","AE","SG","HK","JP"
+    ]);
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
 
@@ -143,11 +217,14 @@ export async function POST(req: Request) {
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
 
-      // Ship to GB (add more if you expand)
-      shipping_address_collection: { allowed_countries: ["GB"] },
+      // Expand shipping globally (editable via env)
+      shipping_address_collection: { allowed_countries: allowedCountries },
 
-      // Multiple options shown to the customer
+      // Multiple options shown to the customer (Stripe will filter ID-based ones by country if configured)
       shipping_options,
+
+      // Payments (enable international methods automatically)
+      automatic_payment_methods: { enabled: true },
 
       billing_address_collection: "auto",
       line_items,
