@@ -13,6 +13,8 @@ export type Product = {
   crystals?: string[];
   herbs?: string[];
   images: string[]; // paths under /public
+  /** Optional “Smells like?” copy shown as a collapsible section on PDPs */
+  smellsLike?: string;
 };
 
 const I = {
@@ -30,11 +32,11 @@ const P = {
 
 const desc = {
   candle: (title: string) =>
-    `${title} â€” a hand-poured, vegan intention candle infused with curated herbs and crystals. Comes with a ritual card to guide your practice.`,
+    `${title} — a hand-poured, vegan intention candle infused with curated herbs and crystals. Comes with a ritual card to guide your practice.`,
   herb: (title: string) =>
-    `${title} Herb Box â€” a sacred botanical blend with matching crystal chips, crafted to complement your candle ritual or to stand alone for altar work.`,
+    `${title} Herb Box — a sacred botanical blend with matching crystal chips, crafted to complement your candle ritual or to stand alone for altar work.`,
   ritual: (title: string) =>
-    `${title} Ritual Box â€” a complete experience with a candle, herb pack, blessed ritual salt, two affirmation cards, and a personally selected crystal.`,
+    `${title} Ritual Box — a complete experience with a candle, herb pack, blessed ritual salt, two affirmation cards, and a personally selected crystal.`,
 };
 
 export const products: Product[] = [
@@ -50,6 +52,8 @@ export const products: Product[] = [
     crystals: ["Clear Quartz", "Citrine"],
     herbs: ["Bay Leaf", "Cinnamon", "Rosemary"],
     images: ["/products/candles/candle-manifestation.png"],
+    smellsLike:
+      "Infused with Clear Quartz for clarity and Citrine for abundance, this hand-poured blend of Bay Leaf, Cinnamon, and Rosemary aligns energy with purpose. A delicate fusion of pear, jasmine, and soft vanilla evokes focus and draws your manifestations into being.",
   },
   {
     id: "candle-love",
@@ -63,6 +67,8 @@ export const products: Product[] = [
     crystals: ["Rose Quartz", "Moonstone"],
     herbs: ["Rose Petals", "Lavender", "Cornflower"],
     images: ["/products/candles/candle-love-self-love.png"],
+    smellsLike:
+      "Infused with Rose Aura Quartz to open the heart and Moonstone to restore inner harmony, this hand-poured blend of Rose Petals, Lavender, and Cornflower nurtures tenderness and devotion. A romantic fusion of rose, freesia, and amber envelops the senses — inviting love in all its forms and reminding you of your inherent worthiness.",
   },
   {
     id: "candle-wealth",
@@ -76,6 +82,8 @@ export const products: Product[] = [
     crystals: ["Green Aventurine", "Citrine"],
     herbs: ["Cinnamon", "Basil", "Peppermint"],
     images: ["/products/candles/candle-wealth-abundance.png"],
+    smellsLike:
+      "Infused with Green Aventurine to attract prosperity and Citrine to amplify success, this hand-poured blend of Cinnamon, Basil, and Peppermint channels opportunity and gratitude. A warm harmony of mandarin, rose, and amber awakens confidence — aligning your energy with abundance in every form.",
   },
   {
     id: "candle-peace",
@@ -89,6 +97,9 @@ export const products: Product[] = [
     crystals: ["Amethyst", "Howlite"],
     herbs: ["Lavender", "Chamomile", "Rosemary"],
     images: ["/products/candles/candle-peace-healing.png"],
+    // Brand spec uses Howlite (replacing Selenite); keeping copy aligned to spec:
+    smellsLike:
+      "Infused with Amethyst to calm the spirit and Howlite to soften the mind, this hand-poured blend of Lavender, Chamomile, and Rosemary soothes and restores the soul. A comforting fusion of tobacco, honey, and amber grounds the senses — releasing tension and guiding you back to inner harmony.",
   },
 
   {

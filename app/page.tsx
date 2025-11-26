@@ -47,18 +47,23 @@ export default function Home() {
 
         {/* Hero Content */}
         <div className="relative mx-auto max-w-6xl px-6 py-24 text-center md:py-28">
+          {/* Black Friday badge */}
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-amber-100">
+            BLACK FRIDAY PRICING · 20% OFF SITEWIDE
+          </p>
+
           <h1 className="magic-heading text-balance text-4xl font-semibold tracking-tight text-white md:text-5xl">
             Every Candle Holds A Little Magic
           </h1>
           <p className="mx-auto mt-3 max-w-2xl text-balance text-white/90">
-            ASHORA isn’t just a brand — it’s a service to the soul.
+            ASHORA isn&apos;t just a brand — it&apos;s a service to the soul.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
               href="/shop"
               className="rounded-md border border-white/70 bg-white/10 px-5 py-3 text-sm font-medium text-white transition hover:border-[#D1A954] hover:bg-[#D1A954]/15 focus:outline-none focus:ring-2 focus:ring-[#D1A954]/50 active:bg-[#D1A954]/25 hover:shadow-[0_0_18px_3px_rgba(209,169,84,0.35)] active:shadow-[0_0_22px_5px_rgba(209,169,84,0.5)]"
             >
-              Shop Candles
+              Shop Intentional Candles
             </Link>
             <Link
               href="/join"
@@ -88,8 +93,12 @@ export default function Home() {
       <section className="border-y border-zinc-200 bg-white/70">
         <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-2 px-6 py-4 text-center text-sm text-zinc-700 sm:grid-cols-4">
           <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">Vegan</li>
-          <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">Eco-Conscious</li>
-          <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">Hand-Poured</li>
+          <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">
+            Eco-Conscious
+          </li>
+          <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">
+            Hand-Poured
+          </li>
           <li className="rounded-md border border-zinc-200 bg-white px-4 py-2">Ritual Cards</li>
         </ul>
       </section>
@@ -97,16 +106,30 @@ export default function Home() {
       {/* Shop By Intention */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="mb-6 text-center">
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Shop By Intention</h2>
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            Shop By Intention
+          </h2>
           <p className="mt-2 text-zinc-600">Choose What You Want to Invite In</p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { slug: "manifestation", title: "Manifestation", img: "/intention/manifestation.jpg" },
-            { slug: "love-self-love", title: "Love & Self-Love", img: "/intention/love-self-love.jpg" },
-            { slug: "wealth-abundance", title: "Wealth & Abundance", img: "/intention/wealth-abundance.jpg" },
-            { slug: "peace-healing", title: "Peace & Healing", img: "/intention/peace-healing.jpg" },
+            {
+              slug: "love-self-love",
+              title: "Love & Self-Love",
+              img: "/intention/love-self-love.jpg",
+            },
+            {
+              slug: "wealth-abundance",
+              title: "Wealth & Abundance",
+              img: "/intention/wealth-abundance.jpg",
+            },
+            {
+              slug: "peace-healing",
+              title: "Peace & Healing",
+              img: "/intention/peace-healing.jpg",
+            },
           ].map((c) => (
             <Link
               key={c.slug}

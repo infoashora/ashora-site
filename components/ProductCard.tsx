@@ -30,10 +30,15 @@ export default function ProductCard({ product, variant = "default" }: Props) {
   const outerState = soldOut ? "opacity-60 grayscale" : "opacity-100";
 
   return (
-    <div className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white ${outerState}`}>
+    <div
+      className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white ${outerState}`}
+    >
       {/* Top image band (no crop) */}
       {soldOut ? (
-        <div className="relative block w-full bg-zinc-50" aria-label={`${product.title} (Sold out)`}>
+        <div
+          className="relative block w-full bg-zinc-50"
+          aria-label={`${product.title} (Sold out)`}
+        >
           <div className={`relative w-full ${imgHeights} ${imgPadding}`}>
             <div className="relative h-full w-full">
               {product.image ? (
@@ -46,7 +51,9 @@ export default function ProductCard({ product, variant = "default" }: Props) {
                   priority={false}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-zinc-400">No image</div>
+                <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                  No image
+                </div>
               )}
             </div>
           </div>
@@ -56,7 +63,11 @@ export default function ProductCard({ product, variant = "default" }: Props) {
           </div>
         </div>
       ) : (
-        <Link href={`/product/${product.handle}`} className="relative block w-full bg-zinc-50" aria-label={product.title}>
+        <Link
+          href={`/product/${product.handle}`}
+          className="relative block w-full bg-zinc-50"
+          aria-label={product.title}
+        >
           <div className={`relative w-full ${imgHeights} ${imgPadding}`}>
             <div className="relative h-full w-full">
               {product.image ? (
@@ -69,9 +80,16 @@ export default function ProductCard({ product, variant = "default" }: Props) {
                   priority={false}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-zinc-400">No image</div>
+                <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                  No image
+                </div>
               )}
             </div>
+          </div>
+
+          {/* Black Friday corner ribbon */}
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+            20% OFF
           </div>
 
           {/* Wishlist heart */}
@@ -86,7 +104,9 @@ export default function ProductCard({ product, variant = "default" }: Props) {
           >
             <svg
               viewBox="0 0 24 24"
-              className={`h-5 w-5 ${wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-zinc-700"}`}
+              className={`h-5 w-5 ${
+                wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-zinc-700"
+              }`}
               strokeWidth="1.6"
             >
               <path d="M12.1 20.3c-.2.1-.5.1-.7 0C7 17.4 4 14.9 2.6 12.1 1.6 10 1.9 7.5 3.6 6.1 5.1 4.9 7.3 5 8.8 6.3c.7.6 1.2 1.3 1.5 2 .3-.7.8-1.4 1.5-2 1.5-1.3 3.7-1.4 5.2-.2 1.7 1.4 2 3.9 1 6-1.4 2.8-4.4 5.3-8.9 8.2z" />
@@ -99,17 +119,26 @@ export default function ProductCard({ product, variant = "default" }: Props) {
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="min-h-[3.25rem]">
           {!!product.badge && <p className="text-xs text-zinc-500">{product.badge}</p>}
-          <h3 className="line-clamp-2 text-sm font-medium text-zinc-900">{product.title}</h3>
+          <h3 className="line-clamp-2 text-sm font-medium text-zinc-900">
+            {product.title}
+          </h3>
         </div>
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-zinc-900">{product.priceText}</span>
-            {lowStock && <span className="text-xs text-amber-700">{`Only ${stock} left`}</span>}
+            <span className="text-sm font-semibold text-zinc-900">
+              {product.priceText}
+            </span>
+            {lowStock && (
+              <span className="text-xs text-amber-700">{`Only ${stock} left`}</span>
+            )}
           </div>
 
           {soldOut ? (
-            <span className="cursor-not-allowed rounded-md border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-500" aria-disabled="true">
+            <span
+              className="cursor-not-allowed rounded-md border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-500"
+              aria-disabled="true"
+            >
               Sold out
             </span>
           ) : (
@@ -135,7 +164,9 @@ export default function ProductCard({ product, variant = "default" }: Props) {
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-5 w-5 ${wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-zinc-700"}`}
+            className={`h-5 w-5 ${
+              wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-zinc-700"
+            }`}
             strokeWidth="1.6"
           >
             <path d="M12.1 20.3c-.2.1-.5.1-.7 0C7 17.4 4 14.9 2.6 12.1 1.6 10 1.9 7.5 3.6 6.1 5.1 4.9 7.3 5 8.8 6.3c.7.6 1.2 1.3 1.5 2 .3-.7.8-1.4 1.5-2 1.5-1.3 3.7-1.4 5.2-.2 1.7 1.4 2 3.9 1 6-1.4 2.8-4.4 5.3-8.9 8.2z" />

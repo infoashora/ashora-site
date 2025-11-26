@@ -12,7 +12,7 @@ const stripe = new Stripe(stripeSecret as string);
 type CartItem = {
   handle: string;
   name: string;
-  unitAmount: number; // pence — TAX-EXCLUSIVE
+  unitAmount: number; // pence — tax-free / tax already included in price
   quantity: number;
   image?: string;
 };
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       return new Response("No items in cart", { status: 400 });
     }
 
-    // Optional promotion code lookup
+    // ---------- Optional promotion code lookup ----------
     let appliedPromotionCodeId: string | undefined;
     const rawPromo = (body.promoCode || "").trim();
 
@@ -85,20 +85,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Subtotal (for free-shipping logic)
+    // ---------- Subtotal (for free-shipping logic) ----------
     const subtotalPence = body.items.reduce((sum, it) => {
       const unit = Math.max(1, Math.round(Number(it.unitAmount || 0)));
       const qty = Math.max(1, Math.floor(it.quantity || 1));
       return sum + unit * qty;
     }, 0);
 
-    // Build Stripe line items (VAT added on top via automatic_tax)
+    // ---------- Build Stripe line items (TAX-FREE) ----------
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
       body.items.map((i) => ({
         quantity: Math.max(1, Math.floor(i.quantity || 1)),
         price_data: {
           currency: "gbp",
-          tax_behavior: "exclusive", // VAT on top
+          // No tax_behavior here – prices are final, tax-free / tax-included
           unit_amount: Math.max(1, Math.round(Number(i.unitAmount || 0))),
           product_data: {
             name: i.name,
@@ -164,7 +164,6 @@ export async function POST(req: Request) {
               minimum: { unit: "business_day", value: 2 },
               maximum: { unit: "business_day", value: 4 },
             },
-            tax_behavior: "exclusive",
           },
         });
       }
@@ -183,7 +182,6 @@ export async function POST(req: Request) {
             minimum: { unit: "business_day", value: 2 },
             maximum: { unit: "business_day", value: 4 },
           },
-          tax_behavior: "exclusive",
         },
       });
     }
@@ -201,7 +199,6 @@ export async function POST(req: Request) {
             minimum: { unit: "business_day", value: 1 },
             maximum: { unit: "business_day", value: 1 },
           },
-          tax_behavior: "exclusive",
         },
       });
     }
@@ -219,7 +216,6 @@ export async function POST(req: Request) {
             minimum: { unit: "business_day", value: 5 },
             maximum: { unit: "business_day", value: 10 },
           },
-          tax_behavior: "exclusive",
         },
       });
     }
@@ -237,7 +233,6 @@ export async function POST(req: Request) {
             minimum: { unit: "business_day", value: 2 },
             maximum: { unit: "business_day", value: 5 },
           },
-          tax_behavior: "exclusive",
         },
       });
     }
@@ -290,8 +285,7 @@ export async function POST(req: Request) {
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"], // broad, worldwide
-      automatic_tax: { enabled: true },
-      tax_id_collection: { enabled: true },
+      // No automatic_tax, no tax_id_collection – prices are final
       shipping_address_collection: { allowed_countries: allowedCountries },
       shipping_options,
       billing_address_collection: "auto",

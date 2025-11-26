@@ -24,6 +24,12 @@ export default function RootLayout({
       <body>
         <CartProvider>
           <WishlistProvider>
+            {/* Black Friday top bar banner */}
+            <div className="w-full bg-black text-white text-xs sm:text-sm text-center py-2 px-4 tracking-wide">
+              Black Friday Ritual Sale — 20% off sitewide with code{" "}
+              <span className="font-semibold">ASHORA20</span>. Limited time only.
+            </div>
+
             <Header />
             <main>{children}</main>
             <Footer />

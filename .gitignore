@@ -10,3 +10,5 @@ out
 data/stock.json
 .vercel
 "@ | Out-File -Encoding utf8 .gitignore
+
+.vercel

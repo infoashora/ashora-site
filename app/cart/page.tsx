@@ -12,7 +12,6 @@ export default function CartPage() {
   const { items, setQty, remove, clear, subtotalPence } = useCart();
   const [loading, setLoading] = useState(false);
   const [promoCode, setPromoCode] = useState("");
-  const [promoError, setPromoError] = useState<string | null>(null);
 
   const hasItems = items.length > 0;
 
@@ -31,8 +30,6 @@ export default function CartPage() {
   const handleCheckout = async () => {
     if (!hasItems || loading) return;
     setLoading(true);
-    setPromoError(null);
-
     try {
       // Build the payload expected by /api/checkout
       const payload = {
@@ -46,8 +43,7 @@ export default function CartPage() {
             image: prod?.image || prod?.images?.[0] || undefined,
           };
         }),
-        // Send promoCode if present (trimmed & uppercased)
-        promoCode: promoCode.trim() ? promoCode.trim().toUpperCase() : undefined,
+        promoCode: promoCode.trim() || undefined,
       };
 
       const res = await fetch("/api/checkout", {
@@ -58,19 +54,6 @@ export default function CartPage() {
 
       if (!res.ok) {
         const text = await res.text();
-
-        // Specific handling for promo-code failures
-        if (
-          text.includes("Invalid or expired promo code") ||
-          text.toLowerCase().includes("promo code error")
-        ) {
-          setPromoError(
-            "That promotion code is invalid, expired, or has reached its limit."
-          );
-          setLoading(false);
-          return;
-        }
-
         throw new Error(text || "Checkout failed");
       }
 
@@ -209,10 +192,7 @@ export default function CartPage() {
                 <dt className="text-zinc-600">Shipping</dt>
                 <dd className="text-zinc-500">Calculated at checkout</dd>
               </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-zinc-600">Tax</dt>
-                <dd className="text-zinc-500">Added at checkout</dd>
-              </div>
+              {/* Tax line removed – prices shown as tax-inclusive/flat */}
             </dl>
 
             {/* Shipping options summary (no free shipping) */}
@@ -226,30 +206,18 @@ export default function CartPage() {
               </ul>
             </div>
 
-            {/* Promo code input */}
-            <div className="mt-4 space-y-1">
-              <label className="block text-xs font-medium uppercase tracking-wide text-zinc-700">
-                Promotion code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) =>
-                    setPromoCode(e.currentTarget.value.toUpperCase())
-                  }
-                  placeholder="Enter code (e.g. ASHORABF25)"
-                  className="flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400"
-                />
+            {/* Promotion code */}
+            <div className="mt-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-zinc-700">
+                Promotion Code
               </div>
-              {promoError && (
-                <p className="text-xs text-red-600">{promoError}</p>
-              )}
-              {!promoError && promoCode.trim() && (
-                <p className="text-xs text-zinc-500">
-                  Code will be applied on the Stripe checkout page.
-                </p>
-              )}
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.currentTarget.value)}
+                placeholder="Enter code (e.g. ASHORABF20)"
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              />
             </div>
 
             <button
@@ -263,7 +231,7 @@ export default function CartPage() {
             </button>
 
             <p className="mt-2 text-center text-xs text-zinc-500">
-              You’ll see shipping & VAT on the next step.
+              You’ll see your final shipping total on the next step.
             </p>
           </aside>
         </div>

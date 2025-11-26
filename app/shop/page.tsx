@@ -58,6 +58,12 @@ export default async function ShopAllPage() {
           <ProductCard key={p.handle} product={p} />
         ))}
       </div>
+
+      {/* Black Friday pricing note */}
+      <section className="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-600">
+        Black Friday Ritual pricing is available for a limited time only. Once it closes,
+        standard pricing returns.
+      </section>
     </main>
   );
 }

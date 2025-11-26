@@ -6,22 +6,19 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PRODUCTS_MAP } from "@/app/product/content";
 
-export const runtime = "nodejs";        // needs fs/path
-export const dynamic = "force-dynamic"; // never prerender this
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// ---------- utils (pure, no side-effects) ----------
+// ---------- utils ----------
 function gbp(pence?: number | null) {
   if (typeof pence !== "number") return "—";
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(
-    pence / 100
-  );
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 const safe = (v?: string | null) => (v ?? "").toString();
 
 const STOCK_DIR = path.join(process.cwd(), "data");
 const STOCK_PATH = path.join(STOCK_DIR, "stock.json");
-
-type StockMap = Record<string, number>; // handle -> stock (override)
+type StockMap = Record<string, number>;
 
 async function ensureStockDir() {
   await fs.mkdir(STOCK_DIR, { recursive: true }).catch(() => {});
@@ -65,15 +62,12 @@ function resolveHandleFromLineItem(li: any): string | null {
 async function decrementStockFor(handles: Array<{ handle: string; qty: number }>) {
   if (!handles.length) return;
   const current = await readStock();
-
-  // seed from catalogue if missing
   for (const { handle } of handles) {
     if (current[handle] === undefined) {
       const cat = PRODUCTS_MAP[handle];
       if (cat && typeof cat.stock === "number") current[handle] = cat.stock;
     }
   }
-  // decrement
   for (const { handle, qty } of handles) {
     if (current[handle] === undefined) continue;
     current[handle] = Math.max(0, (current[handle] ?? 0) - Math.max(1, qty));
@@ -81,34 +75,32 @@ async function decrementStockFor(handles: Array<{ handle: string; qty: number }>
   await writeStock(current);
 }
 
-// Lazy Stripe client to avoid top-level side effects
 async function getStripe(): Promise<Stripe> {
   const key = process.env.STRIPE_SECRET_KEY || "";
   const mod = await import("stripe");
   const StripeCtor = mod.default;
-  // Do not pass apiVersion to avoid TS literal narrowing issues in some builds
-  return new StripeCtor(key) as unknown as Stripe;
+  return new StripeCtor(key, { apiVersion: "2025-08-27.basil" }) as unknown as Stripe;
 }
 
-// ---------- webhook handler ----------
+// ---------- main webhook handler ----------
 export async function POST(req: Request) {
   const sig = headers().get("stripe-signature");
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!secret || !sig) {
-    console.error("[stripe] Missing STRIPE_WEBHOOK_SECRET or stripe-signature");
+    console.error("[stripe:webhook] Missing STRIPE_WEBHOOK_SECRET or signature header");
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
-  // must read raw body for signature verification
   const rawBody = await req.text();
+  let event: Stripe.Event;
 
-  let event: any;
   try {
     const stripe = await getStripe();
-    event = (await import("stripe")).default.webhooks.constructEvent(rawBody, sig, secret);
+    // ✅ Use instance method for correct signature verification
+    event = stripe.webhooks.constructEvent(rawBody, sig, secret);
   } catch (err: any) {
-    console.error("[stripe] Signature verification failed:", err?.message || err);
+    console.error("[stripe:webhook] Signature verification failed:", err?.message || err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -128,18 +120,9 @@ export async function POST(req: Request) {
           description: li.description || prod?.name || li.price?.nickname || "ASHORA Item",
           quantity: li.quantity ?? 1,
           unit_amount: li.price?.unit_amount ?? null,
-          amount_subtotal: li.amount_subtotal ?? null,
           amount_total: li.amount_total ?? null,
           currency: li.currency ?? session.currency,
-          product: prod
-            ? {
-                id: prod.id,
-                name: prod.name,
-                images: Array.isArray(prod.images) ? prod.images : [],
-                metadata: prod.metadata ?? {},
-              }
-            : null,
-          price_metadata: li.price?.metadata ?? {},
+          product: prod ? { id: prod.id, name: prod.name, images: prod.images ?? [], metadata: prod.metadata ?? {} } : null,
         };
       });
 
@@ -148,117 +131,31 @@ export async function POST(req: Request) {
         const handle = resolveHandleFromLineItem(li);
         const qty = Math.max(1, li.quantity ?? 1);
         if (handle) decrements.push({ handle, qty });
-        else console.warn("[stock] Could not resolve handle for line item:", { li_id: li.id, desc: li.description });
+        else console.warn("[stock] Could not resolve handle:", li.description);
       }
-      if (decrements.length) {
-        try {
-          await decrementStockFor(decrements);
-        } catch (e: any) {
-          console.error("[stock] decrement failed:", e?.message || e);
-        }
-      }
+      if (decrements.length) await decrementStockFor(decrements);
 
-      // forward to n8n
-      const payload = {
-        type: event.type,
-        event_id: event.id,
-        created: session.created,
-        session_id: session.id,
-        payment_status: session.payment_status,
-        payment_intent_id:
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : session.payment_intent?.id || null,
-        amount_total: session.amount_total,
-        currency: session.currency,
-        customer_email: session.customer_details?.email || session.customer_email || null,
-        customer_name: session.customer_details?.name || null,
-        customer_details: session.customer_details || null,
-        shipping_details: (session as any).shipping_details || null,
-        line_items: lineItems,
-        metadata: session.metadata || {},
-      };
-
+      // Forward to n8n if set
       const n8nUrl = process.env.N8N_ORDER_WEBHOOK_URL;
-      if (!n8nUrl) {
-        console.warn("[n8n] N8N_ORDER_WEBHOOK_URL not set — skipping forward.");
-      } else {
+      if (n8nUrl) {
         try {
-          const r = await fetch(n8nUrl, {
+          await fetch(n8nUrl, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ event, session, lineItems }),
           });
-          if (!r.ok) {
-            console.error("[n8n] Webhook responded with", r.status, await r.text().catch(() => ""));
-          }
         } catch (e: any) {
-          console.error("[n8n] POST failed:", e?.message || e);
+          console.error("[n8n] POST failed:", e?.message);
         }
       }
 
-      // Optional: customer email via Resend (defer import)
-      try {
-        const RESEND_API_KEY = process.env.RESEND_API_KEY;
-        const toEmail = safe(session.customer_details?.email) || safe(session.customer_email);
-        if (RESEND_API_KEY && toEmail) {
-          const { Resend } = await import("resend");
-          const itemsHtml = lineItems
-            .map((li) => {
-              const qty = li.quantity ?? 1;
-              const line = (li.unit_amount ?? 0) * qty;
-              return `<tr>
-                <td style="padding:8px 0">${li.description}</td>
-                <td style="padding:8px 0; text-align:center">×${qty}</td>
-                <td style="padding:8px 0; text-align:right">${gbp(line)}</td>
-              </tr>`;
-            })
-            .join("");
-
-          const html = `
-            <div style="font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#111;">
-              <h2 style="margin:0 0 8px 0;">Thank you for your order${
-                session.customer_details?.name ? `, ${session.customer_details.name}` : ""
-              }.</h2>
-              <p style="margin:0 0 14px 0;">We’re preparing your ASHORA items with love & intention.</p>
-              <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#fff;">
-                <div style="font-weight:600; font-size:14px; margin-bottom:8px;">Order Summary</div>
-                <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                  ${itemsHtml}
-                  <tr><td colspan="3" style="border-top:1px solid #e5e7eb; padding-top:8px"></td></tr>
-                  <tr>
-                    <td style="padding:8px 0; font-weight:600">Total</td>
-                    <td></td>
-                    <td style="padding:8px 0; text-align:right; font-weight:600">${gbp(
-                      session.amount_total
-                    )}</td>
-                  </tr>
-                </table>
-                <p style="margin:12px 0 0 0; font-size:12px; color:#52525b;">A full receipt has been issued by Stripe.</p>
-              </div>
-              <p style="margin:14px 0 0 0; font-size:13px;">Questions? Email <a href="mailto:info@ashora.co.uk">info@ashora.co.uk</a>.</p>
-              <p style="margin:6px 0 0 0; font-size:12px; color:#6b7280;">With love & intention, ASHORA Team</p>
-            </div>
-          `;
-
-          const resend = new Resend(RESEND_API_KEY);
-          await resend.emails.send({
-            from: process.env.RESEND_FROM || "ASHORA <info@ashora.co.uk>",
-            to: [toEmail],
-            bcc: ["info@ashora.co.uk"],
-            subject: "Your ASHORA order is confirmed",
-            html,
-          });
-        }
-      } catch (e) {
-        console.error("[email] Resend send failed:", e);
-      }
+      console.log("[stripe:webhook] checkout.session.completed processed OK");
     }
 
-    // Always ack (adjust to 500 if you want Stripe retries)
-    return NextResponse.json({ received: true });
+    // ✅ Always acknowledge Stripe to avoid retries
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (e: any) {
     console.error("[stripe:webhook] handler error:", e?.message || e);
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true }, { status: 200 });
   }
 }
