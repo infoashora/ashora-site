@@ -47,10 +47,42 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       items: CartItem[];
       customerEmail?: string;
+      promoCode?: string | null;
     };
 
     if (!body?.items?.length) {
       return new Response("No items in cart", { status: 400 });
+    }
+
+    // Optional promotion code lookup
+    let appliedPromotionCodeId: string | undefined;
+    const rawPromo = (body.promoCode || "").trim();
+
+    if (rawPromo) {
+      try {
+        const promoList = await stripe.promotionCodes.list({
+          code: rawPromo,
+          active: true,
+          limit: 1,
+        });
+
+        const promo = promoList.data[0];
+
+        if (!promo) {
+          return new Response("Invalid or expired promo code", {
+            status: 400,
+          });
+        }
+
+        appliedPromotionCodeId = promo.id;
+      } catch (err: any) {
+        console.error("[checkout] promo lookup error", err?.raw || err);
+        const msg =
+          (err?.raw && (err.raw.message || err.raw.error?.message)) ||
+          err?.message ||
+          "Promo code error";
+        return new Response(`Stripe promo error: ${msg}`, { status: 400 });
+      }
     }
 
     // Subtotal (for free-shipping logic)
@@ -80,40 +112,49 @@ export async function POST(req: Request) {
       }));
 
     // ---------- Shipping options (UK + International) ----------
-    //
-    // IMPORTANT:
-    // - If you create Shipping Rates in the Stripe Dashboard and restrict them to certain countries,
-    //   Checkout will ONLY show rates that match the customer's shipping address country.
-    // - We wire both UK and International IDs here; Stripe will filter based on those restrictions.
-    //
-    // Existing UK envs (back-compat):
     const legacyStandardId = process.env.STRIPE_SHIP_STANDARD_ID; // shr_...
     const legacyExpressId = process.env.STRIPE_SHIP_EXPRESS_ID;   // shr_...
 
-    // New explicit envs:
-    const ukStandardId = process.env.STRIPE_SHIP_UK_STANDARD_ID || legacyStandardId;
-    const ukExpressId  = process.env.STRIPE_SHIP_UK_EXPRESS_ID  || legacyExpressId;
+    let ukStandardId =
+      process.env.STRIPE_SHIP_UK_STANDARD_ID || legacyStandardId || "";
+    const ukExpressId =
+      process.env.STRIPE_SHIP_UK_EXPRESS_ID || legacyExpressId || "";
 
-    const intlStandardId = process.env.STRIPE_SHIP_INTL_STANDARD_ID;
-    const intlExpressId  = process.env.STRIPE_SHIP_INTL_EXPRESS_ID;
+    const intlStandardId = process.env.STRIPE_SHIP_INTL_STANDARD_ID || "";
+    const intlExpressId = process.env.STRIPE_SHIP_INTL_EXPRESS_ID || "";
 
-    const freeId = process.env.STRIPE_SHIP_FREE_ID; // Optional (e.g., UK-only free rate with country restriction)
+    const freeId = process.env.STRIPE_SHIP_FREE_ID || ""; // Optional (e.g., UK-only free rate)
     const freeThreshold = toInt(process.env.FREE_SHIPPING_THRESHOLD_PENCE, 0);
 
-    // Fallback international amounts (used only if INTL IDs are missing)
-    const intlStdFallback = toInt(process.env.INTL_STANDARD_PENCE, 999);  // £9.99
-    const intlExpFallback = toInt(process.env.INTL_EXPRESS_PENCE, 1999); // £19.99
+    const intlStdFallback = toInt(
+      process.env.INTL_STANDARD_PENCE,
+      1299
+    ); // default £12.99
+    const intlExpFallback = toInt(
+      process.env.INTL_EXPRESS_PENCE,
+      1999
+    ); // default £19.99
 
-    const canOfferFree = !!freeId || (freeThreshold > 0 && subtotalPence >= freeThreshold);
+    // Hard-kill the archived UK Standard ID if it sneaks in from any env
+    const ARCHIVED_UK_STANDARD = "shr_1SKM0rK36YMrV9fBDriy8iHr";
+    if (ukStandardId === ARCHIVED_UK_STANDARD) {
+      console.warn(
+        "[checkout] Ignoring archived UK standard ID from env, using inline fallback."
+      );
+      ukStandardId = ""; // force inline
+    }
 
-    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] = [];
+    const canOfferFree =
+      !!freeId || (freeThreshold > 0 && subtotalPence >= freeThreshold);
 
-    // Free (conditional) — typically set up in Dashboard with country restriction (e.g., UK only)
+    const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] =
+      [];
+
+    // Free (conditional)
     if (canOfferFree) {
       if (freeId && subtotalPence >= freeThreshold) {
         shipping_options.push({ shipping_rate: freeId });
       } else if (subtotalPence >= freeThreshold) {
-        // Fallback free rate (no country restriction in API form)
         shipping_options.push({
           shipping_rate_data: {
             display_name: "Free Shipping",
@@ -169,7 +210,6 @@ export async function POST(req: Request) {
     if (intlStandardId) {
       shipping_options.push({ shipping_rate: intlStandardId });
     } else {
-      // Fallback international (shown to everyone if you don't restrict IDs in Dashboard)
       shipping_options.push({
         shipping_rate_data: {
           display_name: "International Standard (Tracked)",
@@ -203,33 +243,60 @@ export async function POST(req: Request) {
     }
 
     // ---------- Allowed ship-to countries ----------
-    const allowedCountries = readCsv("ALLOWED_SHIP_COUNTRIES", [
-      // Sensible default list — edit via env
-      "GB","IE","US","CA","AU","NZ",
-      "FR","DE","NL","BE","ES","IT","PT","AT","DK","FI","SE","NO",
-      "CH","AE","SG","HK","JP"
-    ]);
+    type AllowedCountry =
+      Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry;
 
-    const session = await stripe.checkout.sessions.create({
+    const allowedCountries =
+      readCsv("ALLOWED_SHIP_COUNTRIES", [
+        "GB",
+        "IE",
+        "US",
+        "CA",
+        "AU",
+        "NZ",
+        "FR",
+        "DE",
+        "NL",
+        "BE",
+        "ES",
+        "IT",
+        "PT",
+        "AT",
+        "DK",
+        "FI",
+        "SE",
+        "NO",
+        "CH",
+        "AE",
+        "SG",
+        "HK",
+        "JP",
+      ]) as AllowedCountry[];
+
+    // DEBUG: log what we’re about to send (safe, no PII)
+    console.log("[checkout] config", {
+      allowedCountries,
+      ukStandardId: ukStandardId || "(inline 399p)",
+      ukExpressId: ukExpressId || "(inline 699p)",
+      intlStandardId: intlStandardId || `(inline ${intlStdFallback}p)`,
+      intlExpressId: intlExpressId || `(inline ${intlExpFallback}p)`,
+      freeId: freeId || "(none)",
+      subtotalPence,
+      freeThreshold,
+      promoCode: rawPromo || "(none)",
+      appliedPromotionCodeId: appliedPromotionCodeId || "(none)",
+    });
+
+    const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
-
-      // Taxes
+      payment_method_types: ["card"], // broad, worldwide
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
-
-      // Expand shipping globally (editable via env)
       shipping_address_collection: { allowed_countries: allowedCountries },
-
-      // Multiple options shown to the customer (Stripe will filter ID-based ones by country if configured)
       shipping_options,
-
-      // Payments (enable international methods automatically)
-      automatic_payment_methods: { enabled: true },
-
       billing_address_collection: "auto",
       line_items,
       customer_email: body.customerEmail || undefined,
-
       success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart?canceled=1`,
       metadata: {
@@ -237,8 +304,14 @@ export async function POST(req: Request) {
         free_threshold_pence: String(freeThreshold),
         subtotal_pence: String(subtotalPence),
       },
-    });
+    };
 
+    // Attach discount if we found a promotion code
+    if (appliedPromotionCodeId) {
+      params.discounts = [{ promotion_code: appliedPromotionCodeId }];
+    }
+
+    const session = await stripe.checkout.sessions.create(params);
     return Response.json({ url: session.url });
   } catch (err: any) {
     console.error("[checkout] create error", err?.raw || err);
