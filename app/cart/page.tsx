@@ -11,6 +11,8 @@ const GOLD = "#D1A954";
 export default function CartPage() {
   const { items, setQty, remove, clear, subtotalPence } = useCart();
   const [loading, setLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const hasItems = items.length > 0;
 
@@ -29,6 +31,8 @@ export default function CartPage() {
   const handleCheckout = async () => {
     if (!hasItems || loading) return;
     setLoading(true);
+    setPromoError(null);
+
     try {
       // Build the payload expected by /api/checkout
       const payload = {
@@ -42,6 +46,8 @@ export default function CartPage() {
             image: prod?.image || prod?.images?.[0] || undefined,
           };
         }),
+        // Send promoCode if present (trimmed & uppercased)
+        promoCode: promoCode.trim() ? promoCode.trim().toUpperCase() : undefined,
       };
 
       const res = await fetch("/api/checkout", {
@@ -52,6 +58,19 @@ export default function CartPage() {
 
       if (!res.ok) {
         const text = await res.text();
+
+        // Specific handling for promo-code failures
+        if (
+          text.includes("Invalid or expired promo code") ||
+          text.toLowerCase().includes("promo code error")
+        ) {
+          setPromoError(
+            "That promotion code is invalid, expired, or has reached its limit."
+          );
+          setLoading(false);
+          return;
+        }
+
         throw new Error(text || "Checkout failed");
       }
 
@@ -205,6 +224,32 @@ export default function CartPage() {
                 <li>• Standard — £3.99 · 2–4 business days</li>
                 <li>• Express — £6.99 · Next working day</li>
               </ul>
+            </div>
+
+            {/* Promo code input */}
+            <div className="mt-4 space-y-1">
+              <label className="block text-xs font-medium uppercase tracking-wide text-zinc-700">
+                Promotion code
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) =>
+                    setPromoCode(e.currentTarget.value.toUpperCase())
+                  }
+                  placeholder="Enter code (e.g. ASHORABF25)"
+                  className="flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400"
+                />
+              </div>
+              {promoError && (
+                <p className="text-xs text-red-600">{promoError}</p>
+              )}
+              {!promoError && promoCode.trim() && (
+                <p className="text-xs text-zinc-500">
+                  Code will be applied on the Stripe checkout page.
+                </p>
+              )}
             </div>
 
             <button
