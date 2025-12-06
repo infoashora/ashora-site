@@ -89,3 +89,132 @@ img, svg, canvas, video {
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* ─── Shop page subtle golden particles ─────────────────────── */
+/* Used in app/shop/page.tsx around the product grid */
+
+.shop-sparkle-container {
+  position: absolute;
+  inset: 0;
+}
+
+.shop-sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(209, 169, 84, 1) 0%,
+    rgba(209, 169, 84, 0.6) 40%,
+    transparent 80%
+  );
+  opacity: 0.3;
+  will-change: transform, opacity;
+  animation: shop-sparkle-float 14s linear infinite;
+}
+
+/* Light, randomised positions */
+.shop-sparkle:nth-child(1) {
+  top: 8%;
+  left: 12%;
+  animation-delay: -4s;
+}
+.shop-sparkle:nth-child(2) {
+  top: 22%;
+  left: 78%;
+  animation-delay: -9s;
+}
+.shop-sparkle:nth-child(3) {
+  top: 35%;
+  left: 30%;
+  animation-delay: -2s;
+}
+.shop-sparkle:nth-child(4) {
+  top: 48%;
+  left: 60%;
+  animation-delay: -11s;
+}
+.shop-sparkle:nth-child(5) {
+  top: 62%;
+  left: 18%;
+  animation-delay: -6s;
+}
+.shop-sparkle:nth-child(6) {
+  top: 74%;
+  left: 72%;
+  animation-delay: -14s;
+}
+.shop-sparkle:nth-child(7) {
+  top: 16%;
+  left: 52%;
+  animation-delay: -8s;
+}
+.shop-sparkle:nth-child(8) {
+  top: 40%;
+  left: 88%;
+  animation-delay: -1s;
+}
+.shop-sparkle:nth-child(9) {
+  top: 55%;
+  left: 42%;
+  animation-delay: -12s;
+}
+.shop-sparkle:nth-child(10) {
+  top: 70%;
+  left: 10%;
+  animation-delay: -3s;
+}
+.shop-sparkle:nth-child(11) {
+  top: 12%;
+  left: 90%;
+  animation-delay: -7s;
+}
+.shop-sparkle:nth-child(12) {
+  top: 28%;
+  left: 5%;
+  animation-delay: -5s;
+}
+.shop-sparkle:nth-child(13) {
+  top: 50%;
+  left: 25%;
+  animation-delay: -10s;
+}
+.shop-sparkle:nth-child(14) {
+  top: 66%;
+  left: 55%;
+  animation-delay: -15s;
+}
+.shop-sparkle:nth-child(15) {
+  top: 78%;
+  left: 82%;
+  animation-delay: -13s;
+}
+.shop-sparkle:nth-child(16) {
+  top: 32%;
+  left: 65%;
+  animation-delay: -2s;
+}
+
+@keyframes shop-sparkle-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.12;
+  }
+  25% {
+    transform: translate3d(8px, -12px, 0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(-6px, -4px, 0);
+    opacity: 0.32;
+  }
+  75% {
+    transform: translate3d(6px, 8px, 0);
+    opacity: 0.26;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.12;
+  }
+}

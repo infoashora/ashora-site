@@ -1,16 +1,16 @@
 {
-  "manifestation-candle": 10,
-  "love-self-love-candle": 10,
-  "wealth-abundance-candle": 10,
-  "peace-healing-candle": 10,
+  "manifestation-candle": 7,
+  "love-self-love-candle": 8,
+  "wealth-abundance-candle": 7,
+  "peace-healing-candle": 7,
 
-  "manifestation-herb-box": 10,
-  "love-self-love-herb-box": 10,
-  "wealth-abundance-herb-box": 10,
-  "peace-healing-herb-box": 10,
+  "manifestation-herb-box": 6,
+  "love-self-love-herb-box": 6,
+  "wealth-abundance-herb-box": 6,
+  "peace-healing-herb-box": 6,
 
-  "manifestation-ritual-box": 10,
-  "love-self-love-ritual-box": 10,
-  "wealth-abundance-ritual-box": 10,
-  "peace-healing-ritual-box": 10
+  "manifestation-ritual-box": 2,
+  "love-self-love-ritual-box": 2,
+  "wealth-abundance-ritual-box": 2,
+  "peace-healing-ritual-box": 2
 }

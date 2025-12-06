@@ -52,17 +52,29 @@ export default async function ShopAllPage() {
         />
       </header>
 
-      {/* Grid — uses stock-aware ProductCard */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((p) => (
-          <ProductCard key={p.handle} product={p} />
-        ))}
-      </div>
+      {/* Grid with subtle golden particles */}
+      <section className="relative mt-4">
+        {/* Floating golden particles layer */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="shop-sparkle-container">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <div key={i} className="shop-sparkle" />
+            ))}
+          </div>
+        </div>
 
-      {/* Black Friday pricing note */}
+        {/* Actual product grid */}
+        <div className="relative grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((p) => (
+            <ProductCard key={p.handle} product={p} />
+          ))}
+        </div>
+      </section>
+
+      {/* Seasonal note */}
       <section className="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-600">
-        Black Friday Ritual pricing is available for a limited time only. Once it closes,
-        standard pricing returns.
+        Christmas season offer: 10% off Intention Candles when you buy two or
+        more. Discount is applied automatically at checkout.
       </section>
     </main>
   );

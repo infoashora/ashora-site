@@ -31,14 +31,14 @@ export default function CartPage() {
     if (!hasItems || loading) return;
     setLoading(true);
     try {
-      // Build the payload expected by /api/checkout
+      // Build payload for checkout
       const payload = {
         items: items.map((i) => {
           const prod = PRODUCTS_MAP[i.handle];
           return {
             handle: i.handle,
             name: prod?.title || i.handle,
-            unitAmount: i.pricePence, // already in pence
+            unitAmount: i.pricePence,
             quantity: i.qty,
             image: prod?.image || prod?.images?.[0] || undefined,
           };
@@ -128,7 +128,6 @@ export default function CartPage() {
                   {/* Image */}
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-zinc-100">
                     {img ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={img}
                         alt={title}
@@ -192,10 +191,9 @@ export default function CartPage() {
                 <dt className="text-zinc-600">Shipping</dt>
                 <dd className="text-zinc-500">Calculated at checkout</dd>
               </div>
-              {/* Tax line removed – prices shown as tax-inclusive/flat */}
             </dl>
 
-            {/* Shipping options summary (no free shipping) */}
+            {/* Shipping options summary */}
             <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50/60 p-3">
               <div className="text-sm font-medium text-zinc-900">
                 Shipping options
@@ -215,9 +213,14 @@ export default function CartPage() {
                 type="text"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.currentTarget.value)}
-                placeholder="Enter code (e.g. ASHORABF20)"
+                placeholder="Enter code (optional)"
                 className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
               />
+
+              {/* ★ CHRISTMAS DISCOUNT NOTICE */}
+              <p className="mt-2 text-xs text-[#D1A954] font-medium">
+                10% Christmas Discount applied to all Intention Candles at checkout.
+              </p>
             </div>
 
             <button

@@ -1,54 +1,33 @@
-// app/thank-you/page.tsx
 "use client";
 
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import Link from "next/link";
-
-// Try both carts: Zustand + Context
-import { useCartStore } from "@/lib/cart-store";
 import { CartContext } from "@/app/components/CartProvider";
 
 const GOLD = "#D1A954";
 const COUNT_KEY = "ashora:cartCount";
 
-function ClearCartOnMount() {
-  const storeClear = useCartStore((s) => s.clear);
-  const ctx = useContext(CartContext);
-  const [done, setDone] = useState(false);
+export default function ThankYouPage() {
+  const cart = useContext(CartContext);
 
+  // Clear CartProvider cart + header count on mount
   useEffect(() => {
-    if (done) return;
-
-    // 1) Clear Zustand cart (if present)
     try {
-      storeClear?.();
+      cart?.clear?.();
     } catch {}
 
-    // 2) Clear Context cart (if provider exists)
-    try {
-      ctx?.clear?.();
-    } catch {}
-
-    // 3) Reset header badge fallback + notify listeners
     try {
       localStorage.setItem(COUNT_KEY, "0");
       window.dispatchEvent(
         new CustomEvent("ashora:cart:set", { detail: { count: 0 } })
       );
     } catch {}
+  }, [cart]);
 
-    setDone(true);
-  }, [done, storeClear, ctx]);
-
-  return null;
-}
-
-export default function ThankYouPage() {
   return (
     <main className="relative mx-auto max-w-3xl px-6 py-16">
-      <ClearCartOnMount />
 
-      {/* Soft gold background aura — guaranteed non-blocking */}
+      {/* Soft gold aura background */}
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10 pointer-events-none bg-[radial-gradient(70%_40%_at_50%_0%,rgba(209,169,84,0.08),transparent_60%),radial-gradient(40%_40%_at_100%_10%,rgba(209,169,84,0.06),transparent_55%)]"
@@ -60,12 +39,11 @@ export default function ThankYouPage() {
           Thank You for Your Order
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Your purchase has been received and will be prepared with care, love &
-          intention.
+          Your purchase has been received and will be prepared with care, love and intention.
         </p>
       </header>
 
-      {/* Confirmation card */}
+      {/* Confirmation Card */}
       <section className="mx-auto mt-8 max-w-2xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="border-b border-zinc-200 bg-zinc-50/50 px-6 py-4">
           <h2 className="text-base font-semibold text-zinc-900">
@@ -76,16 +54,12 @@ export default function ThankYouPage() {
         <div className="px-6 py-6">
           <div className="space-y-4 text-sm leading-6 text-zinc-700">
             <p>
-              A confirmation has been sent to your email. You’ll receive
-              tracking details as soon as your order ships.
+              A confirmation has been sent to your email. You will receive tracking details as soon as your order ships.
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>Please allow 2–4 business days for processing.</li>
-              <li>Shipping and taxes (if applicable) were confirmed at checkout.</li>
-              <li>
-                If you need help, reply to your confirmation email or contact us
-                below.
-              </li>
+              <li>Shipping and taxes, if applicable, were confirmed at checkout.</li>
+              <li>If you need help, reply to your confirmation email or contact us below.</li>
             </ul>
           </div>
 
@@ -109,7 +83,7 @@ export default function ThankYouPage() {
         </div>
       </section>
 
-      {/* Support strip */}
+      {/* Support Strip */}
       <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-zinc-200 bg-white/70 px-5 py-4 text-center text-sm text-zinc-700">
         Need assistance? Email{" "}
         <a
@@ -123,4 +97,3 @@ export default function ThankYouPage() {
     </main>
   );
 }
-

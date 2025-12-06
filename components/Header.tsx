@@ -1,4 +1,5 @@
-﻿"use client";
+﻿// components/Header.tsx
+"use client";
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useContext } from "react";
@@ -6,13 +7,6 @@ import { useRouter } from "next/navigation";
 import { CartContext } from "@/app/components/CartProvider";
 
 const GOLD = "#D1A954";
-const COUNT_KEY = "ashora:cartCount";
-
-function getStoredCount(): number {
-  if (typeof window === "undefined") return 0;
-  const v = window.localStorage.getItem(COUNT_KEY);
-  return v ? Math.max(0, parseInt(v, 10) || 0) : 0;
-}
 
 // Tiny bag icon for the cart
 function BagIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -32,20 +26,25 @@ function BagIcon(props: React.SVGProps<SVGSVGElement>) {
 
 export default function Header() {
   const cart = useContext(CartContext);
+
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState<number>(0);
+
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const deskMenuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  // bulletproof nav (works even if something called preventDefault elsewhere)
+  // Bulletproof nav (works even if something called preventDefault elsewhere)
   function go(href: string) {
     try {
       router.push(href);
       // if push is blocked by some rogue preventDefault, hard fallback a tick later
       setTimeout(() => {
-        if (typeof window !== "undefined" && window.location.pathname !== href) {
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== href
+        ) {
           window.location.assign(href);
         }
       }, 0);
@@ -54,37 +53,16 @@ export default function Header() {
     }
   }
 
+  // 🛒 Cart badge – now fully driven by CartProvider
   useEffect(() => {
-    if (cart) {
-      setCount(cart.items.reduce((s, i) => s + i.qty, 0));
+    if (!cart) {
+      setCount(0);
       return;
     }
-    setCount(getStoredCount());
+    setCount(cart.items.reduce((sum, item) => sum + item.qty, 0));
   }, [cart?.items]);
 
-  useEffect(() => {
-    if (cart) return;
-    const onAdd = (e: Event) => {
-      const ce = e as CustomEvent<{ qty?: number }>;
-      const qty = Math.max(1, ce.detail?.qty ?? 1);
-      const next = getStoredCount() + qty;
-      localStorage.setItem(COUNT_KEY, String(next));
-      setCount(next);
-    };
-    const onSet = (e: Event) => {
-      const ce = e as CustomEvent<{ count: number }>;
-      const next = Math.max(0, ce.detail.count);
-      localStorage.setItem(COUNT_KEY, String(next));
-      setCount(next);
-    };
-    window.addEventListener("ashora:cart:add", onAdd as EventListener);
-    window.addEventListener("ashora:cart:set", onSet as EventListener);
-    return () => {
-      window.removeEventListener("ashora:cart:add", onAdd as EventListener);
-      window.removeEventListener("ashora:cart:set", onSet as EventListener);
-    };
-  }, [cart]);
-
+  // Close Explore sheet when clicking outside / pressing Esc
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!open) return;
@@ -148,12 +126,48 @@ export default function Header() {
               role="menu"
             >
               <div className="grid gap-1 p-2 text-sm">
-                <MenuButton label="Shop All" onClick={() => { setOpen(false); go("/shop"); }} />
-                <MenuButton label="Find Your Intention" onClick={() => { setOpen(false); go("/quiz"); }} />
-                <MenuButton label="About" onClick={() => { setOpen(false); go("/about"); }} />
-                <MenuButton label="FAQ" onClick={() => { setOpen(false); go("/faq"); }} />
-                <MenuButton label="Ritual FAQs" onClick={() => { setOpen(false); go("/ritual-faqs"); }} />
-                <MenuButton label="Custom Orders" onClick={() => { setOpen(false); go("/custom-orders"); }} />
+                <MenuButton
+                  label="Shop All"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/shop");
+                  }}
+                />
+                <MenuButton
+                  label="Find Your Intention"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/quiz");
+                  }}
+                />
+                <MenuButton
+                  label="About"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/about");
+                  }}
+                />
+                <MenuButton
+                  label="FAQ"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/faq");
+                  }}
+                />
+                <MenuButton
+                  label="Ritual FAQs"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/ritual-faqs");
+                  }}
+                />
+                <MenuButton
+                  label="Custom Orders"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/custom-orders");
+                  }}
+                />
               </div>
               <div className="border-t border-zinc-200 bg-zinc-50/50 px-3 py-2 text-xs text-zinc-600">
                 Explore ASHORA — Vegan, Eco-Conscious, Spiritual-Meets-Luxury
@@ -162,9 +176,14 @@ export default function Header() {
           )}
         </div>
 
-        {/* Center: Logo (can stay a normal Link since it works on every page) */}
+        {/* Center: Logo */}
         <div className="justify-self-center text-center leading-none">
-          <Link href="/" aria-label="ASHORA" className="group block" prefetch={false}>
+          <Link
+            href="/"
+            aria-label="ASHORA"
+            className="group block"
+            prefetch={false}
+          >
             <span className="block text-base font-semibold tracking-[0.42em] text-zinc-900 transition group-hover:text-[var(--gold)] sm:text-lg sm:tracking-[0.45em]">
               A&nbsp;S&nbsp;H&nbsp;O&nbsp;R&nbsp;A
             </span>
@@ -174,7 +193,7 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Right: Cart + Join (buttons that call go()) */}
+        {/* Right: Cart + Join */}
         <div className="flex items-center justify-self-end gap-1.5 sm:gap-2">
           <button
             type="button"
@@ -218,7 +237,9 @@ export default function Header() {
           >
             <div className="mx-auto max-w-6xl px-4 py-3">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-wide text-zinc-600">Explore ASHORA</p>
+                <p className="text-[11px] uppercase tracking-wide text-zinc-600">
+                  Explore ASHORA
+                </p>
                 <button
                   className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
                   style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
@@ -229,12 +250,48 @@ export default function Header() {
                 </button>
               </div>
               <div className="grid gap-1">
-                <MenuButton label="Shop All" onClick={() => { setOpen(false); go("/shop"); }} />
-                <MenuButton label="Find Your Intention" onClick={() => { setOpen(false); go("/quiz"); }} />
-                <MenuButton label="About" onClick={() => { setOpen(false); go("/about"); }} />
-                <MenuButton label="FAQ" onClick={() => { setOpen(false); go("/faq"); }} />
-                <MenuButton label="Ritual FAQs" onClick={() => { setOpen(false); go("/ritual-faqs"); }} />
-                <MenuButton label="Custom Orders" onClick={() => { setOpen(false); go("/custom-orders"); }} />
+                <MenuButton
+                  label="Shop All"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/shop");
+                  }}
+                />
+                <MenuButton
+                  label="Find Your Intention"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/quiz");
+                  }}
+                />
+                <MenuButton
+                  label="About"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/about");
+                  }}
+                />
+                <MenuButton
+                  label="FAQ"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/faq");
+                  }}
+                />
+                <MenuButton
+                  label="Ritual FAQs"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/ritual-faqs");
+                  }}
+                />
+                <MenuButton
+                  label="Custom Orders"
+                  onClick={() => {
+                    setOpen(false);
+                    go("/custom-orders");
+                  }}
+                />
               </div>
             </div>
           </div>

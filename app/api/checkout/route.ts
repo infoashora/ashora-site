@@ -22,7 +22,6 @@ function toInt(x: string | undefined, fallback = 0): number {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-/** Comma-separated helper for environment lists */
 function readCsv(name: string, fallback: string[]): string[] {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -30,6 +29,31 @@ function readCsv(name: string, fallback: string[]): string[] {
     .split(",")
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean);
+}
+
+/**
+ * Intention Candles (for the Christmas offer) are identified by handle.
+ *
+ * Rule:
+ *  - handle contains one of:
+ *      "manifestation", "love-self-love", "wealth-abundance", "peace-healing"
+ *  - AND handle also contains "candle"
+ *
+ * That way herb boxes / ritual boxes (which may share the intention name)
+ * do NOT get the discount.
+ */
+const INTENTION_HANDLE_KEYWORDS = [
+  "manifestation",
+  "love-self-love",
+  "wealth-abundance",
+  "peace-healing",
+];
+
+function isIntentionCandleHandle(handle: string | undefined): boolean {
+  if (!handle) return false;
+  const h = handle.toLowerCase();
+  if (!h.includes("candle")) return false;
+  return INTENTION_HANDLE_KEYWORDS.some((k) => h.includes(k));
 }
 
 export async function POST(req: Request) {
@@ -54,7 +78,66 @@ export async function POST(req: Request) {
       return new Response("No items in cart", { status: 400 });
     }
 
-    // ---------- Optional promotion code lookup ----------
+    // ---------- Normalize cart items ----------
+    const normalized = body.items.map((it) => {
+      const unit = Math.max(1, Math.round(Number(it.unitAmount || 0)));
+      const qty = Math.max(1, Math.floor(it.quantity || 1));
+      const intention = isIntentionCandleHandle(it.handle);
+      return {
+        ...it,
+        unit,
+        qty,
+        isIntentionCandle: intention,
+      };
+    });
+
+    // ---------- Christmas Promo: 10% off Intention Candles (>= 2 qty total) ----------
+    const totalIntentionQty = normalized
+      .filter((i) => i.isIntentionCandle)
+      .reduce((sum, i) => sum + i.qty, 0);
+
+    const CHRISTMAS_INTENTION_DISCOUNT_RATE = 0.1;
+    const christmasDiscountApplies = totalIntentionQty >= 2;
+
+    // Subtotal based on original prices (pre-discount) for shipping logic / metadata
+    const subtotalPence = normalized.reduce(
+      (sum, it) => sum + it.unit * it.qty,
+      0
+    );
+
+    // Build line_items with discounted unit_amount for intention candles (if promo applies)
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
+      normalized.map((i) => {
+        const baseUnit = i.unit;
+        const discountedUnit =
+          christmasDiscountApplies && i.isIntentionCandle
+            ? Math.max(
+                1,
+                Math.round(baseUnit * (1 - CHRISTMAS_INTENTION_DISCOUNT_RATE))
+              )
+            : baseUnit;
+
+        return {
+          quantity: i.qty,
+          price_data: {
+            currency: "gbp",
+            unit_amount: discountedUnit,
+            product_data: {
+              name: i.name,
+              metadata: {
+                handle: i.handle,
+                is_intention_candle: i.isIntentionCandle ? "1" : "0",
+              },
+              images:
+                i.image && /^https?:\/\//i.test(i.image)
+                  ? [i.image]
+                  : undefined,
+            },
+          },
+        };
+      });
+
+    // ---------- Promo code lookup (Stripe Dashboard promotions) ----------
     let appliedPromotionCodeId: string | undefined;
     const rawPromo = (body.promoCode || "").trim();
 
@@ -81,67 +164,37 @@ export async function POST(req: Request) {
           (err?.raw && (err.raw.message || err.raw.error?.message)) ||
           err?.message ||
           "Promo code error";
+
         return new Response(`Stripe promo error: ${msg}`, { status: 400 });
       }
     }
 
-    // ---------- Subtotal (for free-shipping logic) ----------
-    const subtotalPence = body.items.reduce((sum, it) => {
-      const unit = Math.max(1, Math.round(Number(it.unitAmount || 0)));
-      const qty = Math.max(1, Math.floor(it.quantity || 1));
-      return sum + unit * qty;
-    }, 0);
-
-    // ---------- Build Stripe line items (TAX-FREE) ----------
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      body.items.map((i) => ({
-        quantity: Math.max(1, Math.floor(i.quantity || 1)),
-        price_data: {
-          currency: "gbp",
-          // No tax_behavior here – prices are final, tax-free / tax-included
-          unit_amount: Math.max(1, Math.round(Number(i.unitAmount || 0))),
-          product_data: {
-            name: i.name,
-            metadata: { handle: i.handle },
-            images:
-              i.image && /^https?:\/\//i.test(i.image)
-                ? [i.image]
-                : undefined,
-          },
-        },
-      }));
-
-    // ---------- Shipping options (UK + International) ----------
-    const legacyStandardId = process.env.STRIPE_SHIP_STANDARD_ID; // shr_...
-    const legacyExpressId = process.env.STRIPE_SHIP_EXPRESS_ID;   // shr_...
+    // ---------- Shipping Env Vars ----------
+    const legacyStandardId = process.env.STRIPE_SHIP_STANDARD_ID;
+    const legacyExpressId = process.env.STRIPE_SHIP_EXPRESS_ID;
 
     let ukStandardId =
       process.env.STRIPE_SHIP_UK_STANDARD_ID || legacyStandardId || "";
+
     const ukExpressId =
       process.env.STRIPE_SHIP_UK_EXPRESS_ID || legacyExpressId || "";
 
     const intlStandardId = process.env.STRIPE_SHIP_INTL_STANDARD_ID || "";
     const intlExpressId = process.env.STRIPE_SHIP_INTL_EXPRESS_ID || "";
 
-    const freeId = process.env.STRIPE_SHIP_FREE_ID || ""; // Optional (e.g., UK-only free rate)
+    const freeId = process.env.STRIPE_SHIP_FREE_ID || "";
     const freeThreshold = toInt(process.env.FREE_SHIPPING_THRESHOLD_PENCE, 0);
 
-    const intlStdFallback = toInt(
-      process.env.INTL_STANDARD_PENCE,
-      1299
-    ); // default £12.99
-    const intlExpFallback = toInt(
-      process.env.INTL_EXPRESS_PENCE,
-      1999
-    ); // default £19.99
+    const intlStdFallback = toInt(process.env.INTL_STANDARD_PENCE, 1299);
+    const intlExpFallback = toInt(process.env.INTL_EXPRESS_PENCE, 1999);
 
-    // Hard-kill the archived UK Standard ID if it sneaks in from any env
+    // Kill archived UK Standard ID
     const ARCHIVED_UK_STANDARD = "shr_1SKM0rK36YMrV9fBDriy8iHr";
     if (ukStandardId === ARCHIVED_UK_STANDARD) {
       console.warn(
         "[checkout] Ignoring archived UK standard ID from env, using inline fallback."
       );
-      ukStandardId = ""; // force inline
+      ukStandardId = "";
     }
 
     const canOfferFree =
@@ -150,7 +203,7 @@ export async function POST(req: Request) {
     const shipping_options: Stripe.Checkout.SessionCreateParams.ShippingOption[] =
       [];
 
-    // Free (conditional)
+    // Free
     if (canOfferFree) {
       if (freeId && subtotalPence >= freeThreshold) {
         shipping_options.push({ shipping_rate: freeId });
@@ -237,7 +290,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // ---------- Allowed ship-to countries ----------
+    // ---------- Allowed Countries ----------
     type AllowedCountry =
       Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry;
 
@@ -268,7 +321,7 @@ export async function POST(req: Request) {
         "JP",
       ]) as AllowedCountry[];
 
-    // DEBUG: log what we’re about to send (safe, no PII)
+    // Debug logging
     console.log("[checkout] config", {
       allowedCountries,
       ukStandardId: ukStandardId || "(inline 399p)",
@@ -280,12 +333,14 @@ export async function POST(req: Request) {
       freeThreshold,
       promoCode: rawPromo || "(none)",
       appliedPromotionCodeId: appliedPromotionCodeId || "(none)",
+      christmasIntentionQty: totalIntentionQty,
+      christmasDiscountApplied: christmasDiscountApplies,
     });
 
+    // ---------- Session Params ----------
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
-      payment_method_types: ["card"], // broad, worldwide
-      // No automatic_tax, no tax_id_collection – prices are final
+      payment_method_types: ["card"],
       shipping_address_collection: { allowed_countries: allowedCountries },
       shipping_options,
       billing_address_collection: "auto",
@@ -297,10 +352,14 @@ export async function POST(req: Request) {
         source: "ashora_web_live",
         free_threshold_pence: String(freeThreshold),
         subtotal_pence: String(subtotalPence),
+        christmas_intention_discount_applied: christmasDiscountApplies ? "1" : "0",
+        christmas_intention_total_qty: String(totalIntentionQty),
+        christmas_intention_discount_rate: christmasDiscountApplies
+          ? "10%"
+          : "0%",
       },
     };
 
-    // Attach discount if we found a promotion code
     if (appliedPromotionCodeId) {
       params.discounts = [{ promotion_code: appliedPromotionCodeId }];
     }
@@ -313,6 +372,7 @@ export async function POST(req: Request) {
       (err?.raw && (err.raw.message || err.raw.error?.message)) ||
       err?.message ||
       "Checkout error";
+
     return new Response(`Stripe error: ${msg}`, { status: 500 });
   }
 }

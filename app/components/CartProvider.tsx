@@ -25,50 +25,66 @@ export type CartContextType = {
   subtotalPence: number;
 };
 
-export const CartContext = createContext<CartContextType | undefined>(undefined);
+export const CartContext = createContext<CartContextType | undefined>(
+  undefined
+);
 
 const STORAGE_KEY = "ashora.cart.v1";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false); // 👈 track when we've loaded from storage
 
   // Load from localStorage on first client render
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     try {
-      const raw =
-        typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-      if (raw) {
-        const parsed: CartItem[] = JSON.parse(raw);
-        // keep only products that exist AND have stock > 0
-        const cleaned = parsed
-          .map((it) => {
-            const prod = PRODUCTS_MAP[it.handle];
-            if (!prod || !prod.stock || prod.stock <= 0) return null;
-            const safeQty = Math.max(1, Math.min(Math.floor(it.qty || 1), prod.stock));
-            return {
-              handle: it.handle,
-              qty: safeQty,
-              pricePence: prod.pricePence,
-            } as CartItem;
-          })
-          .filter(Boolean) as CartItem[];
-        setItems(cleaned);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        setHydrated(true);
+        return;
       }
+
+      const parsed: CartItem[] = JSON.parse(raw);
+
+      // keep only products that exist AND have stock > 0
+      const cleaned = parsed
+        .map((it) => {
+          const prod = PRODUCTS_MAP[it.handle];
+          if (!prod || !prod.stock || prod.stock <= 0) return null;
+          const safeQty = Math.max(
+            1,
+            Math.min(Math.floor(it.qty || 1), prod.stock)
+          );
+          return {
+            handle: it.handle,
+            qty: safeQty,
+            pricePence: prod.pricePence,
+          } as CartItem;
+        })
+        .filter(Boolean) as CartItem[];
+
+      setItems(cleaned);
     } catch {
-      /* ignore */
+      // ignore malformed storage
+    } finally {
+      // mark hydration complete whether it succeeded or not
+      setHydrated(true);
     }
   }, []);
 
-  // Persist to localStorage
+  // Persist to localStorage — but ONLY after hydration
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!hydrated) return; // 👈 don't overwrite storage with [] on first render
+
     try {
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
       /* ignore */
     }
-  }, [items]);
+  }, [items, hydrated]);
 
   const api = useMemo<CartContextType>(() => {
     const add = (handle: string, qty = 1) => {
@@ -125,9 +141,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const idx = prev.findIndex((i) => i.handle === handle);
         if (idx === -1) return prev;
 
-        const clamped = Math.max(1, Math.min(Math.floor(qty), prod.stock));
+        const clamped = Math.max(
+          1,
+          Math.min(Math.floor(qty), prod.stock)
+        );
         const next = prev.slice();
-        next[idx] = { ...next[idx], qty: clamped, pricePence: prod.pricePence };
+        next[idx] = {
+          ...next[idx],
+          qty: clamped,
+          pricePence: prod.pricePence,
+        };
         return next;
       });
 
