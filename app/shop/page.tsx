@@ -1,80 +1,187 @@
-﻿import Link from "next/link";
-import { getLiveProducts, type Product } from "@/app/product/live";
-import ProductCard from "@/app/components/ProductCard";
+﻿import Image from "next/image";
+import Link from "next/link";
 
-const GOLD = "#D1A954";
+import ProductCard from "@/app/components/ProductCard";
+import { getLiveProducts } from "@/app/product/live";
 
 export default async function ShopAllPage() {
-  // Pull live products (overlays ./data/stock.json when present)
-  const live = await getLiveProducts();
+  const liveProducts = await getLiveProducts();
 
-  // Order: candle → herb-box → ritual-box, then Title A–Z
-  const orderMap: Record<Product["kind"], number> = {
-    candle: 0,
-    "herb-box": 1,
-    "ritual-box": 2,
-  };
-
-  const items = live.slice().sort((a, b) => {
-    const byKind = orderMap[a.kind] - orderMap[b.kind];
-    if (byKind !== 0) return byKind;
-    return a.title.localeCompare(b.title);
-  });
+  const products = liveProducts
+    .slice()
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-zinc-600">
-        <Link
-          href="/"
-          className="underline decoration-amber-300 underline-offset-4 hover:text-zinc-800"
-        >
-          Home
-        </Link>{" "}
-        / <span className="text-zinc-800">Shop All</span>
-      </nav>
+    <main className="bg-white">
+      {/* Collection Introduction */}
+      <section className="border-b border-[#e6dfd5] bg-[#f7f4ee]">
+        <div className="mx-auto w-full max-w-7xl px-6 pb-16 pt-10 sm:pb-20 sm:pt-12 lg:pb-24 lg:pt-14">
+          <header className="pt-4 sm:pt-6 lg:grid lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-20 lg:pt-8">
+            <div className="max-w-3xl">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-[#a88a52]">
+                The Intention Collection
+              </p>
 
-      {/* Header */}
-      <header className="mt-3 mb-4">
-        <h1 className="font-cormorant text-3xl font-semibold tracking-tight">
-          Shop All
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Luxe, intentional pieces — kept close and curated.
-        </p>
+              <h1 className="mt-5 font-cormorant text-5xl font-medium leading-[0.96] tracking-[-0.025em] text-[#161616] sm:text-6xl lg:text-[4.75rem]">
+                Candles for the life
+                <span className="block">you are creating.</span>
+              </h1>
+            </div>
 
-        <div
-          className="mt-4 h-px w-full rounded-full"
-          style={{
-            background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)`,
-          }}
-          aria-hidden
-        />
-      </header>
+            <div className="mt-8 max-w-xl border-l border-[#d8cfc2] pl-6 lg:mt-0 lg:justify-self-end lg:pl-8">
+              <p className="text-base leading-8 text-zinc-700 sm:text-lg">
+                Hand-poured intention candles created with layered fragrance,
+                carefully selected herbs, crystals and affirmations to support
+                moments of presence, reflection and ritual.
+              </p>
 
-      {/* Grid with subtle golden particles */}
-      <section className="relative mt-4">
-        {/* Floating golden particles layer */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="shop-sparkle-container">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <div key={i} className="shop-sparkle" />
-            ))}
-          </div>
+              <p className="mt-4 text-sm leading-7 text-zinc-500">
+                Choose the intention that speaks to where you are now—or where
+                you are ready to go next.
+              </p>
+            </div>
+          </header>
         </div>
+      </section>
 
-        {/* Actual product grid */}
-        <div className="relative grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((p) => (
-            <ProductCard key={p.handle} product={p} />
+      {/* Candle Collection */}
+      <section
+        aria-label="Intention candle collection"
+        className="mx-auto w-full max-w-7xl px-6 pb-20 pt-12 sm:pb-24 sm:pt-14 lg:pb-28 lg:pt-16"
+      >
+        <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-10 lg:gap-y-16">
+          {products.map((product) => (
+            <ProductCard key={product.handle} product={product} />
           ))}
         </div>
       </section>
 
-      {/* Seasonal note */}
-      <section className="mt-8 border-t border-zinc-200 pt-4 text-center text-xs text-zinc-600">
-        Christmas season offer: 10% off Intention Candles when you buy two or
-        more. Discount is applied automatically at checkout.
+      {/* After Dark Editorial */}
+      <section className="border-t border-zinc-200 bg-[#f7f4ee]">
+        <div className="mx-auto max-w-7xl px-6 py-12 sm:py-16 lg:py-20">
+          <div className="grid border-y border-zinc-300 lg:grid-cols-[0.92fr_1.08fr]">
+            {/* Editorial Copy */}
+            <div className="flex flex-col justify-between py-9 pr-0 sm:py-12 lg:min-h-[560px] lg:py-14 lg:pr-14">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9b793d]">
+                  More Than A Candle
+                </p>
+
+                <h2 className="mt-5 max-w-lg font-cormorant text-4xl font-medium leading-[1.06] tracking-[-0.02em] text-zinc-950 sm:text-[2.85rem] lg:text-[3.25rem]">
+                  Made for the moments you want to remember.
+                </h2>
+
+                <p className="mt-6 max-w-lg text-sm leading-7 text-zinc-600 sm:text-base sm:leading-8">
+                  From quiet evenings alone to nights shared with the people
+                  you love, ASHORA was created to make everyday moments feel a
+                  little more intentional.
+                </p>
+
+                <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-500">
+                  Light the candle. Set the atmosphere. Let the moment become
+                  part of the ritual.
+                </p>
+              </div>
+
+              <div className="mt-9 border-t border-zinc-300 pt-6 lg:mt-12">
+                <p className="max-w-md font-cormorant text-2xl font-medium leading-[1.25] tracking-tight text-zinc-950">
+                  Intention does not have to be quiet. Sometimes it looks like
+                  laughter, connection and being completely present.
+                </p>
+
+                <Link
+                  href="/quiz"
+                  className="group mt-7 inline-flex items-center gap-3 border-b border-zinc-900 pb-2 text-sm font-medium text-zinc-900 transition-colors hover:border-[#9b793d] hover:text-[#9b793d]"
+                >
+                  Find Your Intention
+                  <span
+                    aria-hidden="true"
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Campaign Image */}
+            <div className="relative min-h-[420px] overflow-hidden border-t border-zinc-300 bg-zinc-900 sm:min-h-[520px] lg:min-h-[560px] lg:border-l lg:border-t-0">
+              <Image
+                src="/editorial/after-dark/love-self-love.png"
+                alt="ASHORA Love & Self-Love candle during an evening shared with friends"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 54vw, 100vw"
+              />
+
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/5"
+              />
+
+              <div className="absolute bottom-5 left-5 border border-white/30 bg-black/25 px-3 py-2 backdrop-blur-sm sm:bottom-6 sm:left-6">
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-white">
+                  ASHORA After Dark
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Brand Principles */}
+      <section className="border-t border-zinc-800 bg-zinc-950 text-white">
+        <div className="mx-auto grid max-w-7xl px-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              number: "01",
+              title: "Hand-Poured",
+              text: "Crafted in small batches in Essex.",
+            },
+            {
+              number: "02",
+              title: "Vegan Soy Wax",
+              text: "Thoughtfully chosen for a clean, even burn.",
+            },
+            {
+              number: "03",
+              title: "Crystal Infused",
+              text: "Each intention is paired with selected crystals.",
+            },
+            {
+              number: "04",
+              title: "Affirmation Included",
+              text: "Every candle arrives with its own affirmation card.",
+            },
+          ].map((item, index) => (
+            <div
+              key={item.number}
+              className={`border-zinc-800 py-7 ${
+                index > 0 ? "border-t sm:border-t-0" : ""
+              } ${
+                index % 2 !== 0
+                  ? "sm:border-l sm:pl-7"
+                  : "sm:pr-7"
+              } ${
+                index >= 2 ? "sm:border-t lg:border-t-0" : ""
+              } ${
+                index > 0 ? "lg:border-l lg:pl-7 lg:pr-7" : ""
+              }`}
+            >
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#D1A954]">
+                {item.number}
+              </p>
+
+              <h3 className="mt-3 text-sm font-medium text-white">
+                {item.title}
+              </h3>
+
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                {item.text}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
     </main>
   );

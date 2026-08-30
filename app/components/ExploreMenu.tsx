@@ -8,28 +8,40 @@ export default function ExploreMenu() {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (!ref.current) return;
-      if (!ref.current.contains(e.target as Node)) setOpen(false);
+    const handleClick = (event: MouseEvent) => {
+      if (!ref.current) {
+        return;
+      }
+
+      if (!ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
     };
-    window.addEventListener("click", onClick);
-    window.addEventListener("keydown", onKey);
+
+    window.addEventListener("click", handleClick);
+    window.addEventListener("keydown", handleKey);
+
     return () => {
-      window.removeEventListener("click", onClick);
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", handleClick);
+      window.removeEventListener("keydown", handleKey);
     };
   }, []);
 
-  const itemClass = "px-4 py-2 transition hover:bg-zinc-50 hover:text-[#D1A954]";
+  const itemClass =
+    "px-4 py-2 transition hover:bg-zinc-50 hover:text-[#D1A954]";
 
   return (
     <div ref={ref} className="relative">
       <button
+        type="button"
         className="cursor-pointer text-sm text-zinc-800 transition hover:text-[#D1A954]"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -43,13 +55,40 @@ export default function ExploreMenu() {
           onClick={() => setOpen(false)}
         >
           <nav className="flex flex-col text-sm">
-            <Link href="/shop" className={itemClass}>Shop All</Link>
-            <Link href="/quiz" className={itemClass}>Find Your Intention Quiz</Link>
-            <Link href="/faq" className={itemClass}>FAQ</Link>
-            <Link href="/about" className={itemClass}>About</Link>
-            <Link href="/collection/candles" className={itemClass}>Candles</Link>
-            <Link href="/collection/herb-boxes" className={itemClass}>Herb Boxes</Link>
-            <Link href="/collection/ritual-boxes" className={itemClass}>Ritual Boxes</Link>
+            <Link
+              href="/shop"
+              className={itemClass}
+            >
+              Shop All
+            </Link>
+
+            <Link
+              href="/collection/candles"
+              className={itemClass}
+            >
+              Candles
+            </Link>
+
+            <Link
+              href="/quiz"
+              className={itemClass}
+            >
+              Find Your Intention Quiz
+            </Link>
+
+            <Link
+              href="/faq"
+              className={itemClass}
+            >
+              FAQ
+            </Link>
+
+            <Link
+              href="/about"
+              className={itemClass}
+            >
+              About
+            </Link>
           </nav>
         </div>
       )}

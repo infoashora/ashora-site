@@ -13,175 +13,241 @@ export default function Footer() {
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const q = email ? `?email=${encodeURIComponent(email)}` : "";
-    router.push(`/join${q}`);
+
+    const query = email ? `?email=${encodeURIComponent(email)}` : "";
+    router.push(`/join${query}`);
   }
 
   return (
-    <footer className="mt-12 border-t border-zinc-200 bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        {/* Top band: join + nav links + socials */}
-        <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-between">
-          {/* Left: join circle */}
-          <div className="w-full max-w-md text-center md:text-left">
-            <h3 className="text-sm font-semibold tracking-tight text-zinc-900">
-              Join ASHORA Circle
-            </h3>
-            <p className="mt-1 text-xs text-zinc-600">
-              Intention-led drops, ritual guidance, and members-only perks.
+    <footer className="border-t border-zinc-800 bg-zinc-950 text-white">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="grid gap-10 py-10 sm:py-12 lg:grid-cols-[1.25fr_0.75fr_0.75fr] lg:gap-12">
+          {/* ASHORA Circle */}
+          <div className="max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#D1A954]">
+              Stay Close
             </p>
+
+            <h2 className="mt-3 max-w-md text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Join the ASHORA Circle.
+            </h2>
+
+            <p className="mt-3 max-w-lg text-sm leading-7 text-zinc-400">
+              Receive intention-led guidance, early access to new candle
+              releases and thoughtful rituals created for everyday life.
+            </p>
+
             <form
               onSubmit={onSubmit}
-              className="mx-auto mt-3 flex w-full max-w-xs gap-2 md:mx-0 md:max-w-none"
+              className="mt-5 flex max-w-md border-b border-zinc-700"
             >
               <input
                 type="email"
                 inputMode="email"
-                placeholder="Enter your email"
+                placeholder="Enter your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-xs outline-none transition placeholder:text-zinc-400 focus:border-[var(--gold)]"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
+                className="h-12 min-w-0 flex-1 bg-transparent pr-4 text-sm text-white outline-none placeholder:text-zinc-500"
                 aria-label="Email address"
                 required
               />
+
               <button
                 type="submit"
-                className="h-9 shrink-0 rounded-md border border-zinc-300 bg-white px-3 text-xs font-medium text-zinc-900 transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
+                className="group inline-flex h-12 shrink-0 items-center gap-3 text-sm font-medium text-white transition-colors hover:text-[#D1A954]"
               >
-                Join
+                Join the Circle
+                <span
+                  aria-hidden="true"
+                  className="inline-block transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  →
+                </span>
               </button>
             </form>
           </div>
 
-          {/* Middle: compact links */}
-          <ul className="grid w-full max-w-xs grid-cols-1 gap-y-2 text-center text-xs text-zinc-700 md:max-w-none md:grid-cols-2 md:gap-x-6 md:text-left">
-            <li>
-              <Link
-                className="transition hover:text-[var(--gold)]"
-                href="/shop"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              >
-                Shop All
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="transition hover:text-[var(--gold)]"
-                href="/quiz"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              >
-                Find Your Intention
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="transition hover:text-[var(--gold)]"
-                href="/faq"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              >
-                FAQ
-              </Link>
-            </li>
-            <li>
-              <Link
-                className="transition hover:text-[var(--gold)]"
-                href="/about"
-                style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              >
-                About
-              </Link>
-            </li>
-          </ul>
+          {/* Explore */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D1A954]">
+              Explore
+            </p>
 
-          {/* Right: socials */}
-          <div className="flex items-center justify-center gap-3 md:justify-start">
-            <a
-              href="https://www.instagram.com/ashorauk?igsh=dDVlNmM4eWpucWNq"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-900 transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              aria-label="Instagram"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-                <rect
-                  x="3"
-                  y="3"
-                  width="18"
-                  height="18"
-                  rx="5"
-                  fill="none"
-                  stroke="currentColor"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="3.5"
-                  fill="none"
-                  stroke="currentColor"
-                />
-                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
-              </svg>
-            </a>
-            <a
-              href="https://www.tiktok.com/@ashorauk?_t=ZN-8zyBqjbDw1e&_r=1"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-900 transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-              aria-label="TikTok"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-                <path
-                  d="M15 3c.3 2.3 1.7 3.8 4 4v3.1c-1.6.2-3-.2-4-1.1V15a6 6 0 11-6-6c.3 0 .6 0 1 .1V12a3 3 0 103 3V3h2z"
-                  fill="currentColor"
-                />
-              </svg>
-            </a>
+            <ul className="mt-5 space-y-3 text-sm text-zinc-300">
+              <li>
+                <Link
+                  href="/shop"
+                  className="transition-colors hover:text-white"
+                >
+                  Shop Candles
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/quiz"
+                  className="transition-colors hover:text-white"
+                >
+                  Find Your Intention
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/collections"
+                  className="transition-colors hover:text-white"
+                >
+                  Explore Intentions
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/about"
+                  className="transition-colors hover:text-white"
+                >
+                  Our Story
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/faq"
+                  className="transition-colors hover:text-white"
+                >
+                  FAQ
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Information */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D1A954]">
+              Information
+            </p>
+
+            <ul className="mt-5 space-y-3 text-sm text-zinc-300">
+              <li>
+                <Link
+                  href="/shipping"
+                  className="transition-colors hover:text-white"
+                >
+                  Shipping
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/returns"
+                  className="transition-colors hover:text-white"
+                >
+                  Returns
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/privacy"
+                  className="transition-colors hover:text-white"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+
+              <li>
+                <Link
+                  href="/terms"
+                  className="transition-colors hover:text-white"
+                >
+                  Terms of Service
+                </Link>
+              </li>
+
+              <li>
+                <a
+                  href="mailto:info@ashora.co.uk"
+                  className="transition-colors hover:text-white"
+                >
+                  Contact
+                </a>
+              </li>
+            </ul>
           </div>
         </div>
-      </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-zinc-200">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-3 text-[11px] text-zinc-600 md:flex-row">
-          <p className="text-center md:text-left">
-            © {new Date().getFullYear()} ASHORA. All rights reserved.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 md:justify-end">
-            <Link
-              className="transition hover:text-[var(--gold)]"
-              href="/shipping"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            >
-              Shipping
-            </Link>
-            <Link
-              className="transition hover:text-[var(--gold)]"
-              href="/returns"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            >
-              Returns
-            </Link>
-            <Link
-              className="transition hover:text-[var(--gold)]"
-              href="/privacy"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            >
-              Privacy
-            </Link>
-            <Link
-              className="transition hover:text-[var(--gold)]"
-              href="/terms"
-              style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            >
-              Terms
-            </Link>
+        <div className="border-t border-zinc-800 py-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-lg font-semibold tracking-[0.2em] text-white">
+                ASHORA
+              </p>
+
+              <p className="mt-2 text-xs text-zinc-500">
+                Intentional candles for meaningful everyday rituals.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <a
+                href="https://www.instagram.com/ashorauk?igsh=dDVlNmM4eWpucWNq"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 transition hover:border-[#D1A954] hover:text-[#D1A954]"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="5"
+                    fill="none"
+                    stroke="currentColor"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3.5"
+                    fill="none"
+                    stroke="currentColor"
+                  />
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                </svg>
+              </a>
+
+              <a
+                href="https://www.tiktok.com/@ashorauk?_t=ZN-8zyBqjbDw1e&_r=1"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TikTok"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 transition hover:border-[#D1A954] hover:text-[#D1A954]"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M15 3c.3 2.3 1.7 3.8 4 4v3.1c-1.6.2-3-.2-4-1.1V15a6 6 0 11-6-6c.3 0 .6 0 1 .1V12a3 3 0 103 3V3h2z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 border-t border-zinc-900 pt-4 text-[11px] text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>© {new Date().getFullYear()} ASHORA. All rights reserved.</p>
+
             <a
-              className="transition hover:text-[var(--gold)]"
               href="mailto:info@ashora.co.uk"
+              className="transition-colors hover:text-zinc-300"
               style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
             >
               info@ashora.co.uk

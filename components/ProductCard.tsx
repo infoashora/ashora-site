@@ -2,17 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+
 import { useCart } from "@/app/components/CartProvider";
-import { useWishlist } from "@/hooks/useWishlist";
 import type { Product } from "@/app/product/content";
+import { useWishlist } from "@/hooks/useWishlist";
 
 type Props = {
   product: Product;
-  /** Visual variant. "compact" is used in tight spots (e.g. suggestions). */
   variant?: "default" | "compact";
 };
 
-export default function ProductCard({ product, variant = "default" }: Props) {
+export default function ProductCard({
+  product,
+  variant = "default",
+}: Props) {
   const { add } = useCart();
   const { toggle, isWishlisted } = useWishlist();
 
@@ -21,42 +24,34 @@ export default function ProductCard({ product, variant = "default" }: Props) {
   const soldOut = stock <= 0;
   const lowStock = !soldOut && stock <= 5;
 
-  // Intention Candle heuristic – adjust if you add explicit type later
-  const isIntentionCandle =
-    typeof product.badge === "string" &&
-    product.badge.toLowerCase().includes("intention");
-
-  // Image sizing/layout per variant
-  const imgHeights =
+  const imageHeights =
     variant === "compact"
       ? "h-48 sm:h-52 lg:h-48 xl:h-52"
       : "h-80 sm:h-96 lg:h-[22rem] xl:h-[24rem]";
-  const imgPadding = variant === "compact" ? "p-2 sm:p-2.5" : "p-2.5 sm:p-3";
-  const outerState = soldOut ? "opacity-60 grayscale" : "opacity-100";
+
+  const imagePadding =
+    variant === "compact" ? "p-2 sm:p-2.5" : "p-2.5 sm:p-3";
+
+  const cardState = soldOut ? "opacity-60 grayscale" : "opacity-100";
 
   return (
-    <div className="group relative h-full">
-      {/* ✧ Soft golden glow behind card on hover */}
+    <article className={`group relative h-full ${cardState}`}>
       <div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-3 top-0 h-32 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
         style={{
           background:
-            "radial-gradient(circle at 50% 0%, rgba(209,169,84,0.32), transparent 70%)",
+            "radial-gradient(circle at 50% 0%, rgba(209,169,84,0.24), transparent 70%)",
         }}
-        aria-hidden="true"
       />
 
-      {/* Actual card */}
-      <div
-        className={`relative z-10 flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white ${outerState}`}
-      >
-        {/* SOLD OUT STATE */}
+      <div className="relative z-10 flex h-full flex-col">
         {soldOut ? (
           <div
-            className="relative block w-full bg-zinc-50"
+            className="relative block w-full overflow-hidden bg-[#eee9df]"
             aria-label={`${product.title} (Sold out)`}
           >
-            <div className={`relative w-full ${imgHeights} ${imgPadding}`}>
+            <div className={`relative w-full ${imageHeights} ${imagePadding}`}>
               <div className="relative h-full w-full">
                 {product.image ? (
                   <Image
@@ -74,24 +69,24 @@ export default function ProductCard({ product, variant = "default" }: Props) {
               </div>
             </div>
 
-            <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-zinc-900/90 px-3 py-1 text-xs font-medium text-white">
-              Sold out
+            <div className="pointer-events-none absolute left-3 top-3 bg-zinc-950 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+              Sold Out
             </div>
           </div>
         ) : (
           <Link
             href={`/product/${product.handle}`}
-            className="relative block w-full bg-zinc-50"
+            className="relative block w-full overflow-hidden bg-[#eee9df]"
             aria-label={product.title}
           >
-            <div className={`relative w-full ${imgHeights} ${imgPadding}`}>
+            <div className={`relative w-full ${imageHeights} ${imagePadding}`}>
               <div className="relative h-full w-full">
                 {product.image ? (
                   <Image
                     src={product.image}
                     alt={product.title}
                     fill
-                    className="object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                    className="object-contain transition-transform duration-700 ease-out group-hover:scale-[1.02]"
                     sizes="(min-width: 1280px) 360px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                   />
                 ) : (
@@ -102,40 +97,27 @@ export default function ProductCard({ product, variant = "default" }: Props) {
               </div>
             </div>
 
-            {/* ✧ Diagonal SALE Ribbon – Intention Candles only */}
-            {isIntentionCandle && (
-              <div className="pointer-events-none absolute left-2 top-6 -rotate-45">
-                <div
-                  className="inline-block border text-[7.5px] sm:text-[8.5px] font-semibold uppercase tracking-[0.18em] text-amber-50 px-4 py-1 shadow-md"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, #5B1F2A 0%, #7A2837 50%, #5B1F2A 100%)",
-                    borderColor: "#D1A954",
-                  }}
-                >
-                  SALE
-                </div>
-              </div>
-            )}
-
-            {/* Wishlist Heart */}
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 toggle(product.handle);
               }}
-              aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white"
+              aria-label={
+                wished ? "Remove from wishlist" : "Add to wishlist"
+              }
+              className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full border border-zinc-300 bg-[#faf8f4]/90 text-zinc-700 backdrop-blur transition hover:border-[#9b793d] hover:text-[#9b793d]"
             >
               <svg
                 viewBox="0 0 24 24"
                 className={`h-5 w-5 ${
                   wished
                     ? "fill-rose-500 stroke-rose-500"
-                    : "fill-none stroke-zinc-700"
+                    : "fill-none stroke-current"
                 }`}
                 strokeWidth="1.6"
+                aria-hidden="true"
               >
                 <path d="M12.1 20.3c-.2.1-.5.1-.7 0C7 17.4 4 14.9 2.6 12.1 1.6 10 1.9 7.5 3.6 6.1 5.1 4.9 7.3 5 8.8 6.3c.7.6 1.2 1.3 1.5 2 .3-.7.8-1.4 1.5-2 1.5-1.3 3.7-1.4 5.2-.2 1.7 1.4 2 3.9 1 6-1.4 2.8-4.4 5.3-8.9 8.2z" />
               </svg>
@@ -143,47 +125,67 @@ export default function ProductCard({ product, variant = "default" }: Props) {
           </Link>
         )}
 
-        {/* Bottom info */}
-        <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex flex-1 flex-col border-b border-zinc-300 pb-4 pt-4">
           <div className="min-h-[3.25rem]">
-            {!!product.badge && (
-              <p className="text-xs text-zinc-500">{product.badge}</p>
+            {product.badge ? (
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9b793d]">
+                {product.badge}
+              </p>
+            ) : (
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9b793d]">
+                Intention Candle
+              </p>
             )}
-            <h3 className="line-clamp-2 text-sm font-medium text-zinc-900">
-              {product.title}
-            </h3>
+
+            <Link
+              href={`/product/${product.handle}`}
+              className="mt-2 block"
+            >
+              <h3 className="line-clamp-2 text-lg font-medium tracking-tight text-zinc-950 transition-colors hover:text-[#9b793d]">
+                {product.title}
+              </h3>
+            </Link>
           </div>
 
-          <div className="mt-auto flex items-center justify-between">
+          <div className="mt-5 flex items-end justify-between gap-5">
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-zinc-900">
+              <span className="text-sm font-semibold text-zinc-950">
                 {product.priceText}
               </span>
+
               {lowStock && (
-                <span className="text-xs text-amber-700">{`Only ${stock} left`}</span>
+                <span className="mt-1 text-xs text-[#9b793d]">
+                  Only {stock} left
+                </span>
               )}
             </div>
 
             {soldOut ? (
               <span
-                className="cursor-not-allowed rounded-md border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-500"
+                className="cursor-not-allowed text-xs font-medium uppercase tracking-[0.14em] text-zinc-500"
                 aria-disabled="true"
               >
-                Sold out
+                Sold Out
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => add(product.handle)}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs font-medium text-zinc-900 transition hover:border-zinc-900"
+                className="group/button inline-flex items-center gap-2 border-b border-zinc-900 pb-1 text-xs font-medium text-zinc-900 transition-colors hover:border-[#9b793d] hover:text-[#9b793d]"
                 aria-label={`Add ${product.title} to cart`}
               >
                 Add to Cart
+                <span
+                  aria-hidden="true"
+                  className="transition-transform duration-300 group-hover/button:translate-x-1"
+                >
+                  →
+                </span>
               </button>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

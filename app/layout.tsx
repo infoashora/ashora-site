@@ -24,17 +24,6 @@ export default function RootLayout({
       <body>
         <CartProvider>
           <WishlistProvider>
-            {/* 🎄 Christmas Seasonal Top Banner
-                To disable after Christmas, remove this block or wrap in a feature flag. */}
-            <div className="w-full bg-[#D1A954] text-zinc-900 text-[11px] sm:text-xs md:text-sm text-center py-2 px-4 tracking-wide">
-              <span className="mr-1">✧</span>
-              <span className="font-semibold">Christmas Offer:</span>
-              <span className="ml-1">
-                Buy 2 or more Intention Candles and get 10% off the total. Seasonal offer.
-              </span>
-              <span className="ml-1">✧</span>
-            </div>
-
             <Header />
             <main>{children}</main>
             <Footer />

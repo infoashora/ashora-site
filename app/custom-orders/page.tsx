@@ -4,7 +4,7 @@ import CustomOrdersClient from "./CustomOrdersClient";
 export const metadata = {
   title: "Custom Orders | ASHORA",
   description:
-    "Bespoke spiritual tools crafted to your intention — custom candles, ritual boxes, crystal kits and herb boxes. Hand-poured with love & intention.",
+    "Bespoke intention candles handcrafted to your unique vision. Create a personalised ASHORA candle infused with herbs, crystals, and intention.",
 };
 
 export default function Page() {

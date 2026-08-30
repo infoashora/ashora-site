@@ -2,13 +2,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useContext } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { CartContext } from "@/app/components/CartProvider";
 
 const GOLD = "#D1A954";
 
-// Tiny bag icon for the cart
 function BagIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
@@ -16,7 +16,7 @@ function BagIcon(props: React.SVGProps<SVGSVGElement>) {
         d="M7 9V7a5 5 0 0110 0v2M5.5 9h13l-.9 10.2a2 2 0 01-2 1.8H8.4a2 2 0 01-2-1.8L5.5 9z"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.45"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -24,23 +24,64 @@ function BagIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function ChevronDownIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 12 12" aria-hidden="true" {...props}>
+      <path
+        d="M2.25 4.25 6 8l3.75-3.75"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const MENU_ITEMS = [
+  {
+    label: "Shop Candles",
+    href: "/shop",
+  },
+  {
+    label: "Find Your Intention",
+    href: "/quiz",
+  },
+  {
+    label: "Explore Intentions",
+    href: "/collections",
+  },
+  {
+    label: "Our Story",
+    href: "/about",
+  },
+  {
+    label: "Candle & Ritual FAQs",
+    href: "/ritual-faqs",
+  },
+  {
+    label: "Custom Orders",
+    href: "/custom-orders",
+  },
+];
+
 export default function Header() {
   const cart = useContext(CartContext);
-
-  const [open, setOpen] = useState(false);
-  const [count, setCount] = useState<number>(0);
-
-  const btnRef = useRef<HTMLButtonElement | null>(null);
-  const sheetRef = useRef<HTMLDivElement | null>(null);
-  const deskMenuRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  // Bulletproof nav (works even if something called preventDefault elsewhere)
+  const [open, setOpen] = useState(false);
+  const [count, setCount] = useState(0);
+
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const desktopMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+
   function go(href: string) {
     try {
       router.push(href);
-      // if push is blocked by some rogue preventDefault, hard fallback a tick later
-      setTimeout(() => {
+
+      window.setTimeout(() => {
         if (
           typeof window !== "undefined" &&
           window.location.pathname !== href
@@ -49,284 +90,276 @@ export default function Header() {
         }
       }, 0);
     } catch {
-      if (typeof window !== "undefined") window.location.assign(href);
+      if (typeof window !== "undefined") {
+        window.location.assign(href);
+      }
     }
   }
 
-  // 🛒 Cart badge – now fully driven by CartProvider
   useEffect(() => {
     if (!cart) {
       setCount(0);
       return;
     }
-    setCount(cart.items.reduce((sum, item) => sum + item.qty, 0));
+
+    setCount(cart.items.reduce((total, item) => total + item.qty, 0));
   }, [cart?.items]);
 
-  // Close Explore sheet when clicking outside / pressing Esc
   useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!open) return;
-      const t = e.target as Node;
-      if (
-        btnRef.current?.contains(t) ||
-        sheetRef.current?.contains(t) ||
-        deskMenuRef.current?.contains(t)
-      )
+    function handleOutsideClick(event: MouseEvent) {
+      if (!open) {
         return;
+      }
+
+      const target = event.target as Node;
+
+      if (
+        menuButtonRef.current?.contains(target) ||
+        desktopMenuRef.current?.contains(target) ||
+        mobileMenuRef.current?.contains(target)
+      ) {
+        return;
+      }
+
       setOpen(false);
     }
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
     }
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onEsc);
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onEsc);
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
 
   return (
     <header
-      className="sticky top-0 z-[9999] border-b border-zinc-200 bg-[#FAF8F4]/90 backdrop-blur"
+      className="sticky top-0 z-[9999] border-b border-zinc-200 bg-[#fbfaf7]/95 backdrop-blur-md"
       style={{ willChange: "transform" }}
     >
-      <div className="mx-auto grid max-w-6xl grid-cols-3 items-center px-4 py-2 sm:py-3 sm:px-6">
-        {/* Left: Explore */}
+      <div className="mx-auto grid min-h-[70px] max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+        {/* Left Navigation */}
         <div className="relative justify-self-start">
           <button
-            ref={btnRef}
+            ref={menuButtonRef}
             type="button"
             aria-haspopup="menu"
             aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-zinc-800 transition hover:text-[var(--gold)] sm:px-1 sm:py-0.5 sm:text-sm"
-            style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
+            onClick={() => setOpen((current) => !current)}
+            className="group inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-800 transition-colors hover:text-[#9b793d] focus:outline-none"
             title="Explore ASHORA"
           >
             <span className="hidden sm:inline">Explore ASHORA</span>
             <span className="sm:hidden">Explore</span>
-            <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M6 9l6 6 6-6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+
+            <ChevronDownIcon
+              className={`h-3 w-3 transition-transform duration-300 ${
+                open ? "rotate-180" : ""
+              }`}
+            />
           </button>
 
-          {/* Desktop dropdown */}
+          {/* Desktop Menu */}
           {open && (
             <div
-              ref={deskMenuRef}
-              className="absolute left-0 mt-2 hidden w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl sm:block"
+              ref={desktopMenuRef}
               role="menu"
+              className="absolute left-0 top-full mt-4 hidden w-[320px] border border-zinc-200 bg-[#fffefa] shadow-[0_22px_55px_rgba(24,24,27,0.13)] sm:block"
             >
-              <div className="grid gap-1 p-2 text-sm">
-                <MenuButton
-                  label="Shop All"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/shop");
-                  }}
-                />
-                <MenuButton
-                  label="Find Your Intention"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/quiz");
-                  }}
-                />
-                <MenuButton
-                  label="About"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/about");
-                  }}
-                />
-                <MenuButton
-                  label="FAQ"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/faq");
-                  }}
-                />
-                <MenuButton
-                  label="Ritual FAQs"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/ritual-faqs");
-                  }}
-                />
-                <MenuButton
-                  label="Custom Orders"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/custom-orders");
-                  }}
-                />
+              <div className="border-b border-zinc-200 px-5 py-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#9b793d]">
+                  Discover ASHORA
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                  Explore intentional candles and discover the ritual that
+                  feels right for you.
+                </p>
               </div>
-              <div className="border-t border-zinc-200 bg-zinc-50/50 px-3 py-2 text-xs text-zinc-600">
-                Explore ASHORA — Vegan, Eco-Conscious, Spiritual-Meets-Luxury
+
+              <div className="py-1.5">
+                {MENU_ITEMS.map((item) => (
+                  <button
+                    key={item.href}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      go(item.href);
+                    }}
+                    className="group flex w-full items-center justify-between gap-5 px-5 py-3 text-left transition-colors hover:bg-[#f7f4ee]"
+                  >
+                    <span className="text-sm font-medium text-zinc-900 transition-colors group-hover:text-zinc-950">
+                      {item.label}
+                    </span>
+
+                    <span
+                      aria-hidden="true"
+                      className="shrink-0 text-sm text-zinc-300 transition duration-300 group-hover:translate-x-1 group-hover:text-[#9b793d]"
+                    >
+                      →
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* Center: Logo */}
-        <div className="justify-self-center text-center leading-none">
+        {/* Centre Brand */}
+        <div className="-translate-y-px justify-self-center text-center leading-none">
           <Link
             href="/"
-            aria-label="ASHORA"
+            aria-label="ASHORA homepage"
             className="group block"
             prefetch={false}
           >
-            <span className="block text-base font-semibold tracking-[0.42em] text-zinc-900 transition group-hover:text-[var(--gold)] sm:text-lg sm:tracking-[0.45em]">
-              A&nbsp;S&nbsp;H&nbsp;O&nbsp;R&nbsp;A
+            <span className="block text-lg font-semibold tracking-[0.32em] text-zinc-950 transition-colors group-hover:text-[#9b793d] sm:text-xl">
+              ASHORA
             </span>
-            <span className="mt-0.5 hidden text-[11px] leading-tight text-zinc-600 transition group-hover:text-[var(--gold)] sm:block">
+
+            <span className="mt-1.5 hidden text-[9px] uppercase tracking-[0.14em] text-zinc-500 transition-colors group-hover:text-zinc-700 sm:block">
               The Seed To The Garden You Can Grow
             </span>
           </Link>
         </div>
 
-        {/* Right: Cart + Join */}
-        <div className="flex items-center justify-self-end gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => go("/cart")}
-            className="relative inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
-            style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            title="Cart"
-            aria-label="Cart"
+        {/* Right Navigation */}
+        <div className="flex items-center justify-self-end gap-3">
+          <Link
+            href="/quiz"
+            className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-800 transition-colors hover:text-[#9b793d] lg:block"
           >
-            <BagIcon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-            <span className="hidden sm:inline">CART</span>
-            {count > 0 && (
-              <span className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-semibold text-zinc-900 sm:min-w-[18px] sm:text-[11px]">
-                {count}
-              </span>
-            )}
-          </button>
+            Start Quiz
+          </Link>
+
+          <span
+            aria-hidden="true"
+            className="hidden h-5 w-px bg-zinc-300 lg:block"
+          />
 
           <button
             type="button"
             onClick={() => go("/join")}
-            className="rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 transition hover:border-[var(--gold)] hover:text-[var(--gold)] sm:px-3 sm:py-1.5 sm:text-sm"
-            style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-            title="Join ASHORA"
-            aria-label="Join ASHORA"
+            className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-800 transition-colors hover:text-[#9b793d] md:block"
+            title="Join ASHORA Circle"
+            aria-label="Join ASHORA Circle"
           >
-            <span className="sm:hidden">Join</span>
-            <span className="hidden sm:inline">JOIN ASHORA</span>
+            Join
+          </button>
+
+          <button
+            type="button"
+            onClick={() => go("/cart")}
+            className="relative inline-flex items-center gap-2 text-zinc-800 transition-colors hover:text-[#9b793d]"
+            title="Cart"
+            aria-label="Cart"
+          >
+            <BagIcon className="h-[19px] w-[19px]" />
+
+            <span className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] sm:inline">
+              Cart
+            </span>
+
+            {count > 0 && (
+              <span className="absolute -right-2.5 -top-2 inline-flex min-h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#D1A954] px-1 text-[9px] font-semibold leading-none text-zinc-950">
+                {count}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Mobile sheet */}
-      <div className="sm:hidden">
-        {open && (
-          <div
-            ref={sheetRef}
-            role="menu"
-            aria-label="Explore ASHORA"
-            className="border-t border-zinc-200 bg-white shadow-xl"
-          >
-            <div className="mx-auto max-w-6xl px-4 py-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-wide text-zinc-600">
-                  Explore ASHORA
+      {/* Mobile Menu */}
+      {open && (
+        <div
+          ref={mobileMenuRef}
+          role="menu"
+          aria-label="Explore ASHORA"
+          className="border-t border-zinc-200 bg-[#fffefa] shadow-xl sm:hidden"
+        >
+          <div className="px-4 py-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#9b793d]">
+                  Discover ASHORA
                 </p>
+
+                <p className="mt-1 text-xs text-zinc-500">
+                  Explore the collection and find your intention.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:text-[#9b793d]"
+                aria-label="Close Explore menu"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="divide-y divide-zinc-200">
+              {MENU_ITEMS.map((item) => (
                 <button
-                  className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] transition hover:border-[var(--gold)] hover:text-[var(--gold)]"
-                  style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-                  onClick={() => setOpen(false)}
-                  aria-label="Close Explore"
+                  key={item.href}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    go(item.href);
+                  }}
+                  className="group flex w-full items-center justify-between gap-4 py-4 text-left"
                 >
-                  Close
+                  <span className="text-sm font-medium text-zinc-900">
+                    {item.label}
+                  </span>
+
+                  <span
+                    aria-hidden="true"
+                    className="text-sm text-zinc-400 transition duration-300 group-hover:translate-x-1 group-hover:text-[#9b793d]"
+                  >
+                    →
+                  </span>
                 </button>
-              </div>
-              <div className="grid gap-1">
-                <MenuButton
-                  label="Shop All"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/shop");
-                  }}
-                />
-                <MenuButton
-                  label="Find Your Intention"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/quiz");
-                  }}
-                />
-                <MenuButton
-                  label="About"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/about");
-                  }}
-                />
-                <MenuButton
-                  label="FAQ"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/faq");
-                  }}
-                />
-                <MenuButton
-                  label="Ritual FAQs"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/ritual-faqs");
-                  }}
-                />
-                <MenuButton
-                  label="Custom Orders"
-                  onClick={() => {
-                    setOpen(false);
-                    go("/custom-orders");
-                  }}
-                />
-              </div>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  go("/join");
+                }}
+                className="border border-zinc-300 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-800 transition-colors hover:border-[#D1A954] hover:text-[#9b793d]"
+              >
+                Join ASHORA
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  go("/cart");
+                }}
+                className="inline-flex items-center justify-center gap-2 border border-zinc-300 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-800 transition-colors hover:border-[#D1A954] hover:text-[#9b793d]"
+              >
+                <BagIcon className="h-4 w-4" />
+                Cart {count > 0 ? `(${count})` : ""}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </header>
-  );
-}
-
-function MenuButton({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      role="menuitem"
-      className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-zinc-800 transition hover:bg-amber-50 hover:text-[var(--gold)]"
-      style={{ ["--gold" as any]: GOLD } as React.CSSProperties}
-    >
-      <span>{label}</span>
-      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M9 6l6 6-6 6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
   );
 }
