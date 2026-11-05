@@ -1,3 +1,4 @@
+
 import type { ProductStorytelling } from "./types";
 
 export const peaceHealingStorytelling: ProductStorytelling = {
@@ -25,9 +26,9 @@ export const peaceHealingStorytelling: ProductStorytelling = {
           "Traditionally associated with peace, clarity and inner balance, Amethyst encourages moments of quiet reflection and mindful stillness.",
       },
       {
-        name: "Howlite",
+        name: "Selenite",
         description:
-          "Often linked with calm, patience and emotional wellbeing, Howlite serves as a gentle reminder to slow down, breathe deeply and embrace moments of rest.",
+          "Traditionally associated with clarity, cleansing and peaceful energy, Selenite symbolises the release of negativity and the invitation of stillness, balance and gentle renewal.",
       },
       {
         name: "Lavender",
@@ -70,7 +71,7 @@ export const peaceHealingStorytelling: ProductStorytelling = {
       {
         title: "Thoughtfully Infused",
         description:
-          "Thoughtfully infused with Amethyst, Howlite and carefully selected botanicals.",
+          "Thoughtfully infused with Amethyst, Selenite and carefully selected botanicals.",
       },
       {
         title: "A Rich, Comforting Fragrance",

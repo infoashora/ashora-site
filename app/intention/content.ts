@@ -1,4 +1,5 @@
-﻿// app/intention/content.ts
+﻿
+// app/intention/content.ts
 
 export type IntentionKey =
   | "manifestation"
@@ -113,7 +114,7 @@ export const INTENTIONS: Record<IntentionKey, IntentionData> = {
     title: "Peace & Healing",
     blurb:
       "Soothe the nervous system and return to calm, centered presence.",
-    crystals: "Amethyst, Howlite",
+    crystals: "Amethyst, Selenite",
     herbs: "Lavender, Chamomile, Rosemary",
     affirmations: [
       "I am safe to rest and receive.",
@@ -145,3 +146,4 @@ export function listIntentions() {
 export function getIntention(slug: IntentionKey) {
   return INTENTIONS[slug];
 }
+
