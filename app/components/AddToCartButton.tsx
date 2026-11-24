@@ -1,5 +1,7 @@
-﻿// app/components/AddToCartButton.tsx
+﻿
 "use client";
+
+// app/components/AddToCartButton.tsx
 
 import React, { useMemo, useState } from "react";
 import { useCart } from "@/app/components/CartProvider";
@@ -7,10 +9,10 @@ import { useCart } from "@/app/components/CartProvider";
 type Props = {
   handle: string;
   qty?: number;
-  /** Pass the known stock when you have it (e.g., on the PDP). */
   stock?: number;
+  personalisationName?: string;
   className?: string;
-  style?: React.CSSProperties; // NEW: allow CSS vars / inline styles
+  style?: React.CSSProperties;
   children?: React.ReactNode;
 };
 
@@ -18,6 +20,7 @@ export default function AddToCartButton({
   handle,
   qty = 1,
   stock,
+  personalisationName,
   className,
   style,
   children,
@@ -25,45 +28,60 @@ export default function AddToCartButton({
   const { items, add } = useCart();
   const [note, setNote] = useState<string | null>(null);
 
-  // How many of this item are already in the cart?
   const inCartQty = useMemo(
-    () => items.find((i) => i.handle === handle)?.qty ?? 0,
+    () =>
+      items.reduce(
+        (total, item) =>
+          total + (item.handle === handle ? item.qty : 0),
+        0
+      ),
     [items, handle]
   );
 
   const finiteStock =
-    typeof stock === "number" && Number.isFinite(stock) ? Math.max(0, stock) : undefined;
+    typeof stock === "number" && Number.isFinite(stock)
+      ? Math.max(0, stock)
+      : undefined;
 
   const remaining =
-    typeof finiteStock === "number" ? Math.max(0, finiteStock - inCartQty) : undefined;
+    typeof finiteStock === "number"
+      ? Math.max(0, finiteStock - inCartQty)
+      : undefined;
 
-  const soldOut = typeof finiteStock === "number" && finiteStock <= 0;
+  const soldOut =
+    typeof finiteStock === "number" && finiteStock <= 0;
+
   const cannotAdd =
-    typeof remaining === "number" ? remaining <= 0 : false; // if stock is unknown, we don't block
+    typeof remaining === "number" && remaining <= 0;
 
   function handleAdd() {
     setNote(null);
 
-    // If we know stock, enforce it.
+    const requestedQty = Number.isFinite(qty)
+      ? Math.max(1, Math.floor(qty))
+      : 1;
+
     if (typeof remaining === "number") {
       if (remaining <= 0) {
-        setNote("Sold out or max in cart.");
+        setNote("Sold out or maximum quantity in cart.");
         return;
       }
 
-      const addQty = Math.min(qty, remaining);
-      add(handle, addQty);
+      const addQty = Math.min(requestedQty, remaining);
 
-      if (addQty < qty || remaining - addQty === 0) {
-        setNote("That’s all we have right now.");
+      add(handle, addQty, personalisationName);
+
+      if (addQty < requestedQty || remaining - addQty === 0) {
+        setNote("That's all we have available right now.");
       } else {
-        setNote(null);
+        setNote("Added to your cart.");
       }
+
       return;
     }
 
-    // Fallback (no stock info provided) — behave as before
-    add(handle, qty);
+    add(handle, requestedQty, personalisationName);
+    setNote("Added to your cart.");
   }
 
   return (
@@ -73,26 +91,32 @@ export default function AddToCartButton({
         onClick={handleAdd}
         disabled={soldOut || cannotAdd}
         aria-disabled={soldOut || cannotAdd}
-        className={
+        className={[
+          "flex w-full items-center justify-center",
+          "transition duration-200",
+          "disabled:cursor-not-allowed disabled:opacity-60",
           className ??
-          "h-11 w-full rounded-md bg-[var(--gold)] text-white font-medium hover:opacity-90 transition disabled:cursor-not-allowed disabled:opacity-60"
-        }
-        style={style} // forward inline styles (e.g., CSS vars)
+            "rounded-md bg-[var(--gold)] text-white font-medium hover:opacity-90",
+        ].join(" ")}
+        style={{
+          ...style,
+          minHeight: "52px",
+          padding: "14px 24px",
+        }}
         title={soldOut ? "Sold out" : undefined}
       >
-        {children ?? (soldOut ? "Sold out" : "Add to Cart")}
+        {children ??
+          (soldOut ? "Sold out" : "Add to Cart")}
       </button>
 
-      {/* Gentle inline note */}
       {note && (
         <p className="mt-2 text-center text-xs text-zinc-600">
           {note}
         </p>
       )}
 
-      {/* Tiny helper line when we know stock and some already in cart */}
       {typeof finiteStock === "number" && finiteStock > 0 && (
-        <p className="mt-1 text-center text-[11px] text-zinc-500">
+        <p className="mt-2 text-center text-[11px] text-zinc-500">
           {remaining ?? 0} available • {inCartQty} in your cart
         </p>
       )}

@@ -1,5 +1,7 @@
-﻿// app/components/CartProvider.tsx
+﻿
 "use client";
+
+// app/components/CartProvider.tsx
 
 import React, {
   createContext,
@@ -10,170 +12,409 @@ import React, {
 } from "react";
 import { PRODUCTS_MAP } from "../product/content";
 
+export const PERSONALISATION_PRICE_PENCE = 500;
+const STORAGE_KEY = "ashora.cart.v1";
+const MAX_NAME_LENGTH = 40;
+
 export type CartItem = {
+  id: string;
   handle: string;
   qty: number;
   pricePence: number;
+  personalisationName?: string;
 };
 
 export type CartContextType = {
   items: CartItem[];
-  add: (handle: string, qty?: number) => void;
-  remove: (handle: string) => void;
-  setQty: (handle: string, qty: number) => void;
+  add: (
+    handle: string,
+    qty?: number,
+    personalisationName?: string
+  ) => void;
+  remove: (idOrHandle: string) => void;
+  setQty: (idOrHandle: string, qty: number) => void;
+  setPersonalisation: (
+    idOrHandle: string,
+    name: string | null
+  ) => void;
   clear: () => void;
   subtotalPence: number;
 };
 
-export const CartContext = createContext<CartContextType | undefined>(
-  undefined
-);
+export const CartContext = createContext<
+  CartContextType | undefined
+>(undefined);
 
-const STORAGE_KEY = "ashora.cart.v1";
+function cleanName(value: unknown): string {
+  if (typeof value !== "string") return "";
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
+  return value.trim().replace(/\s+/g, " ").slice(0, MAX_NAME_LENGTH);
+}
+
+function createId(): string {
+  return `personalised-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 11)}`;
+}
+
+function countProduct(
+  items: CartItem[],
+  handle: string
+): number {
+  return items.reduce(
+    (total, item) =>
+      total + (item.handle === handle ? item.qty : 0),
+    0
+  );
+}
+
+function normaliseItems(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return [];
+
+  const result: CartItem[] = [];
+  const totals: Record<string, number> = {};
+
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+
+    const item = raw as Partial<CartItem>;
+    const handle = item.handle;
+
+    if (typeof handle !== "string") continue;
+
+    const product = PRODUCTS_MAP[handle];
+
+    if (!product || product.stock <= 0) continue;
+
+    const alreadyAdded = totals[handle] ?? 0;
+    const remaining = Math.max(0, product.stock - alreadyAdded);
+
+    if (remaining <= 0) continue;
+
+    const requestedQty = Number.isFinite(Number(item.qty))
+      ? Math.max(1, Math.floor(Number(item.qty)))
+      : 1;
+
+    const qty = Math.min(requestedQty, remaining);
+    const name = cleanName(item.personalisationName);
+
+    if (name) {
+      // Every personalised box is an individual unit.
+      for (let index = 0; index < qty; index++) {
+        result.push({
+          id: createId(),
+          handle,
+          qty: 1,
+          pricePence: product.pricePence,
+          personalisationName: name,
+        });
+      }
+    } else {
+      const existing = result.find(
+        (entry) =>
+          entry.handle === handle &&
+          !entry.personalisationName
+      );
+
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        result.push({
+          id: handle,
+          handle,
+          qty,
+          pricePence: product.pricePence,
+        });
+      }
+    }
+
+    totals[handle] = alreadyAdded + qty;
+  }
+
+  return result;
+}
+
+export function CartProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [hydrated, setHydrated] = useState(false); // 👈 track when we've loaded from storage
+  const [hydrated, setHydrated] = useState(false);
 
-  // Load from localStorage on first client render
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setHydrated(true);
-        return;
+
+      if (raw) {
+        setItems(normaliseItems(JSON.parse(raw)));
       }
-
-      const parsed: CartItem[] = JSON.parse(raw);
-
-      // keep only products that exist AND have stock > 0
-      const cleaned = parsed
-        .map((it) => {
-          const prod = PRODUCTS_MAP[it.handle];
-          if (!prod || !prod.stock || prod.stock <= 0) return null;
-          const safeQty = Math.max(
-            1,
-            Math.min(Math.floor(it.qty || 1), prod.stock)
-          );
-          return {
-            handle: it.handle,
-            qty: safeQty,
-            pricePence: prod.pricePence,
-          } as CartItem;
-        })
-        .filter(Boolean) as CartItem[];
-
-      setItems(cleaned);
     } catch {
-      // ignore malformed storage
+      setItems([]);
     } finally {
-      // mark hydration complete whether it succeeded or not
       setHydrated(true);
     }
   }, []);
 
-  // Persist to localStorage — but ONLY after hydration
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!hydrated) return; // 👈 don't overwrite storage with [] on first render
+    if (!hydrated) return;
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      /* ignore */
+      // Storage may be unavailable.
     }
   }, [items, hydrated]);
 
   const api = useMemo<CartContextType>(() => {
-    const add = (handle: string, qty = 1) => {
-      const prod = PRODUCTS_MAP[handle];
-      if (!prod) return;
+    const add = (
+      handle: string,
+      qty = 1,
+      personalisationName?: string
+    ) => {
+      const product = PRODUCTS_MAP[handle];
 
-      // Hard guard: block adding out-of-stock products
-      if (!prod.stock || prod.stock <= 0) {
-        if (typeof window !== "undefined") {
-          window.alert("This item is currently sold out.");
-        }
+      if (!product || product.stock <= 0) {
+        window.alert("This item is currently sold out.");
         return;
       }
 
-      const delta = Math.max(1, Math.floor(qty));
+      const name = cleanName(personalisationName);
 
-      setItems((prev) => {
-        const idx = prev.findIndex((i) => i.handle === handle);
-        if (idx === -1) {
-          const initialQty = Math.min(delta, prod.stock);
-          return [
-            ...prev,
-            { handle, qty: initialQty, pricePence: prod.pricePence },
-          ];
+      const requestedQty = Number.isFinite(qty)
+        ? Math.max(1, Math.floor(qty))
+        : 1;
+
+      setItems((previous) => {
+        const alreadyInCart = countProduct(previous, handle);
+        const remaining = Math.max(
+          0,
+          product.stock - alreadyInCart
+        );
+
+        if (remaining <= 0) {
+          window.alert(`Only ${product.stock} in stock.`);
+          return previous;
         }
-        const next = prev.slice();
-        const currentQty = next[idx].qty;
-        const newQty = Math.min(currentQty + delta, prod.stock);
-        if (newQty === currentQty && typeof window !== "undefined") {
-          window.alert(`Only ${prod.stock} in stock.`);
+
+        const amount = Math.min(requestedQty, remaining);
+        const next = [...previous];
+
+        if (name) {
+          for (let index = 0; index < amount; index++) {
+            next.push({
+              id: createId(),
+              handle,
+              qty: 1,
+              pricePence: product.pricePence,
+              personalisationName: name,
+            });
+          }
+        } else {
+          const existingIndex = next.findIndex(
+            (item) =>
+              item.handle === handle &&
+              !item.personalisationName
+          );
+
+          if (existingIndex >= 0) {
+            next[existingIndex] = {
+              ...next[existingIndex],
+              qty: next[existingIndex].qty + amount,
+              pricePence: product.pricePence,
+            };
+          } else {
+            next.push({
+              id: handle,
+              handle,
+              qty: amount,
+              pricePence: product.pricePence,
+            });
+          }
         }
-        next[idx] = {
-          ...next[idx],
-          qty: newQty,
-          pricePence: prod.pricePence, // keep price in sync with catalogue
-        };
+
         return next;
       });
     };
 
-    const remove = (handle: string) =>
-      setItems((prev) => prev.filter((i) => i.handle !== handle));
+    const remove = (idOrHandle: string) => {
+      setItems((previous) =>
+        previous.filter(
+          (item) =>
+            item.id !== idOrHandle
+        )
+      );
+    };
 
-    const setQty = (handle: string, qty: number) =>
-      setItems((prev) => {
-        const prod = PRODUCTS_MAP[handle];
-        if (!prod) return prev;
+    const setQty = (
+      idOrHandle: string,
+      requestedQty: number
+    ) => {
+      setItems((previous) => {
+        const index = previous.findIndex(
+          (item) => item.id === idOrHandle
+        );
 
-        // If product is now out of stock, remove it
-        if (!prod.stock || prod.stock <= 0) {
-          return prev.filter((i) => i.handle !== handle);
+        if (index < 0) return previous;
+
+        const item = previous[index];
+        const product = PRODUCTS_MAP[item.handle];
+
+        if (!product || product.stock <= 0) {
+          return previous.filter(
+            (entry) => entry.id !== item.id
+          );
         }
 
-        const idx = prev.findIndex((i) => i.handle === handle);
-        if (idx === -1) return prev;
+        // Personalised boxes always have quantity one.
+        if (item.personalisationName) return previous;
 
-        const clamped = Math.max(
-          1,
-          Math.min(Math.floor(qty), prod.stock)
+        const otherQty = countProduct(
+          previous.filter((entry) => entry.id !== item.id),
+          item.handle
         );
-        const next = prev.slice();
-        next[idx] = {
-          ...next[idx],
-          qty: clamped,
-          pricePence: prod.pricePence,
+
+        const maximum = product.stock - otherQty;
+
+        if (maximum <= 0) return previous;
+
+        const quantity = Number.isFinite(requestedQty)
+          ? Math.max(
+              1,
+              Math.min(Math.floor(requestedQty), maximum)
+            )
+          : 1;
+
+        const next = [...previous];
+
+        next[index] = {
+          ...item,
+          qty: quantity,
+          pricePence: product.pricePence,
         };
+
         return next;
       });
+    };
+
+    const setPersonalisation = (
+      idOrHandle: string,
+      requestedName: string | null
+    ) => {
+      const name = cleanName(requestedName);
+
+      setItems((previous) => {
+        const index = previous.findIndex(
+          (item) => item.id === idOrHandle
+        );
+
+        if (index < 0) return previous;
+
+        const item = previous[index];
+        const next = [...previous];
+
+        if (name) {
+          if (item.personalisationName) {
+            next[index] = {
+              ...item,
+              personalisationName: name,
+            };
+            return next;
+          }
+
+          // Split one ordinary candle from its quantity group.
+          if (item.qty > 1) {
+            next[index] = {
+              ...item,
+              qty: item.qty - 1,
+            };
+
+            next.push({
+              id: createId(),
+              handle: item.handle,
+              qty: 1,
+              pricePence: item.pricePence,
+              personalisationName: name,
+            });
+          } else {
+            next[index] = {
+              ...item,
+              id: createId(),
+              personalisationName: name,
+            };
+          }
+
+          return next;
+        }
+
+        if (!item.personalisationName) return previous;
+
+        // Remove personalisation and merge into ordinary stock.
+        next.splice(index, 1);
+
+        const ordinaryIndex = next.findIndex(
+          (entry) =>
+            entry.handle === item.handle &&
+            !entry.personalisationName
+        );
+
+        if (ordinaryIndex >= 0) {
+          next[ordinaryIndex] = {
+            ...next[ordinaryIndex],
+            qty: next[ordinaryIndex].qty + 1,
+          };
+        } else {
+          next.push({
+            id: item.handle,
+            handle: item.handle,
+            qty: 1,
+            pricePence: item.pricePence,
+          });
+        }
+
+        return next;
+      });
+    };
 
     const clear = () => setItems([]);
 
     const subtotalPence = items.reduce(
-      (sum, i) => sum + i.pricePence * i.qty,
+      (total, item) =>
+        total +
+        item.pricePence * item.qty +
+        (item.personalisationName
+          ? PERSONALISATION_PRICE_PENCE
+          : 0),
       0
     );
 
-    return { items, add, remove, setQty, clear, subtotalPence };
+    return {
+      items,
+      add,
+      remove,
+      setQty,
+      setPersonalisation,
+      clear,
+      subtotalPence,
+    };
   }, [items]);
 
   return (
-    <CartContext.Provider value={api}>{children}</CartContext.Provider>
+    <CartContext.Provider value={api}>
+      {children}
+    </CartContext.Provider>
   );
 }
 
-// Hook that reads the same context instance
 export function useCart(): CartContextType {
-  const ctx = useContext(CartContext);
-  if (!ctx) {
-    throw new Error("useCart must be used within <CartProvider>");
+  const context = useContext(CartContext);
+
+  if (!context) {
+    throw new Error(
+      "useCart must be used within <CartProvider>"
+    );
   }
-  return ctx;
+
+  return context;
 }
+

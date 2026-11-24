@@ -1,43 +1,92 @@
-﻿// app/cart/page.tsx
+﻿
 "use client";
+
+// app/cart/page.tsx
 
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
-import { useCart } from "@/app/components/CartProvider";
+import {
+  PERSONALISATION_PRICE_PENCE,
+  useCart,
+} from "@/app/components/CartProvider";
 import { PRODUCTS_MAP } from "@/app/product/content";
 
+const MAX_NAME_LENGTH = 40;
+
+function formatGBP(pence: number): string {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP",
+  }).format(pence / 100);
+}
+
 export default function CartPage() {
-  const { items, setQty, remove, clear, subtotalPence } = useCart();
+  const {
+    items,
+    setQty,
+    remove,
+    setPersonalisation,
+    clear,
+    subtotalPence,
+  } = useCart();
 
   const [loading, setLoading] = useState(false);
   const [promoCode, setPromoCode] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [addingNameId, setAddingNameId] = useState<string | null>(
+    null
+  );
+  const [newName, setNewName] = useState("");
 
   const hasItems = items.length > 0;
 
-  const formatGBP = (pence: number) =>
-    new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: "GBP",
-    }).format((pence || 0) / 100);
-
   const handleClearAll = () => {
-    if (!hasItems) {
-      return;
-    }
+    if (!hasItems) return;
 
-    const confirmed = window.confirm("Remove all items from your cart?");
-
-    if (confirmed) {
+    if (window.confirm("Remove all items from your cart?")) {
       clear();
+      setEditingId(null);
+      setAddingNameId(null);
     }
   };
 
+  const startEditing = (id: string, name: string) => {
+    setAddingNameId(null);
+    setEditingId(id);
+    setEditingName(name);
+  };
+
+  const saveName = (id: string) => {
+    const name = editingName.trim().replace(/\s+/g, " ");
+
+    if (!name || name.length > MAX_NAME_LENGTH) return;
+
+    setPersonalisation(id, name);
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const startAddingName = (id: string) => {
+    setEditingId(null);
+    setAddingNameId(id);
+    setNewName("");
+  };
+
+  const addName = (id: string) => {
+    const name = newName.trim().replace(/\s+/g, " ");
+
+    if (!name || name.length > MAX_NAME_LENGTH) return;
+
+    setPersonalisation(id, name);
+    setAddingNameId(null);
+    setNewName("");
+  };
+
   const handleCheckout = async () => {
-    if (!hasItems || loading) {
-      return;
-    }
+    if (!hasItems || loading) return;
 
     setLoading(true);
 
@@ -51,7 +100,12 @@ export default function CartPage() {
             name: product?.title || item.handle,
             unitAmount: item.pricePence,
             quantity: item.qty,
-            image: product?.image || product?.images?.[0] || undefined,
+            image:
+              product?.image ||
+              product?.images?.[0] ||
+              undefined,
+            personalisationName:
+              item.personalisationName || undefined,
           };
         }),
         promoCode: promoCode.trim() || undefined,
@@ -105,8 +159,8 @@ export default function CartPage() {
               </h1>
 
               <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-600">
-                Review your chosen candle and continue when your ritual feels
-                complete.
+                Review your chosen candles and continue when your
+                ritual feels complete.
               </p>
             </div>
 
@@ -141,8 +195,8 @@ export default function CartPage() {
             </h2>
 
             <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-zinc-600">
-              Explore the collection and choose the intention that feels right
-              for this chapter.
+              Explore the collection and choose the intention that
+              feels right for this chapter.
             </p>
 
             <Link
@@ -165,11 +219,25 @@ export default function CartPage() {
                 {items.map((item) => {
                   const product = PRODUCTS_MAP[item.handle];
                   const title = product?.title || item.handle;
-                  const image = product?.image || product?.images?.[0];
+                  const image =
+                    product?.image || product?.images?.[0];
+
+                  const personalised = Boolean(
+                    item.personalisationName
+                  );
+
+                  const unitPrice =
+                    item.pricePence +
+                    (personalised
+                      ? PERSONALISATION_PRICE_PENCE
+                      : 0);
+
+                  const isEditing = editingId === item.id;
+                  const isAddingName = addingNameId === item.id;
 
                   return (
                     <article
-                      key={item.handle}
+                      key={item.id}
                       className="grid gap-5 border-b border-zinc-300 py-6 sm:grid-cols-[130px_1fr] sm:gap-7"
                     >
                       <Link
@@ -201,73 +269,239 @@ export default function CartPage() {
                               >
                                 {title}
                               </Link>
+
+                              {personalised && (
+                                <span className="mt-2 inline-block border border-[#d9c9ad] bg-[#fcfaf6] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9b793d]">
+                                  Personalised Box
+                                </span>
+                              )}
                             </div>
 
                             <p className="shrink-0 text-base font-medium text-zinc-950">
-                              {formatGBP(item.pricePence * item.qty)}
+                              {formatGBP(unitPrice * item.qty)}
                             </p>
                           </div>
 
                           <p className="mt-3 text-sm text-zinc-500">
-                            {formatGBP(item.pricePence)} each
+                            {formatGBP(item.pricePence)} candle
+                            {personalised && (
+                              <span>
+                                {" "}+ {formatGBP(
+                                  PERSONALISATION_PRICE_PENCE
+                                )} personalisation
+                              </span>
+                            )}
                           </p>
+
+                          {personalised && !isEditing && (
+                            <div className="mt-4 border-l-2 border-[#b99752] pl-4">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                                Name on Box
+                              </p>
+
+                              <p className="mt-1 text-sm font-medium text-zinc-900">
+                                {item.personalisationName}
+                              </p>
+
+                              <div className="mt-3 flex flex-wrap gap-5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    startEditing(
+                                      item.id,
+                                      item.personalisationName || ""
+                                    )
+                                  }
+                                  className="border-b border-zinc-400 pb-1 text-xs text-zinc-600 hover:border-zinc-950 hover:text-zinc-950"
+                                >
+                                  Edit Name
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPersonalisation(item.id, null)
+                                  }
+                                  className="border-b border-zinc-400 pb-1 text-xs text-zinc-600 hover:border-zinc-950 hover:text-zinc-950"
+                                >
+                                  Remove Personalisation
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {isEditing && (
+                            <div className="mt-4 border border-[#e7dcc8] bg-[#fcfaf6] p-4">
+                              <label
+                                htmlFor={`edit-name-${item.id}`}
+                                className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600"
+                              >
+                                Edit Name on Box
+                              </label>
+
+                              <input
+                                id={`edit-name-${item.id}`}
+                                type="text"
+                                maxLength={MAX_NAME_LENGTH}
+                                value={editingName}
+                                onChange={(event) =>
+                                  setEditingName(event.target.value)
+                                }
+                                className="mt-2 h-11 w-full border border-[#d9c9ad] bg-white px-3 text-sm text-zinc-900 outline-none focus:border-[#9b793d]"
+                              />
+
+                              <div className="mt-3 flex gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => saveName(item.id)}
+                                  disabled={!editingName.trim()}
+                                  className="bg-zinc-900 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+                                >
+                                  Save Name
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  className="px-3 py-2 text-xs text-zinc-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {!personalised && !isAddingName && (
+                            <button
+                              type="button"
+                              onClick={() => startAddingName(item.id)}
+                              className="mt-4 w-fit border-b border-[#9b793d] pb-1 text-xs font-medium text-[#9b793d] transition hover:text-zinc-900"
+                            >
+                              Personalise One Box +£5.00
+                            </button>
+                          )}
+
+                          {isAddingName && (
+                            <div className="mt-4 border border-[#e7dcc8] bg-[#fcfaf6] p-4">
+                              <label
+                                htmlFor={`new-name-${item.id}`}
+                                className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600"
+                              >
+                                Name for Your Box
+                              </label>
+
+                              <input
+                                id={`new-name-${item.id}`}
+                                type="text"
+                                maxLength={MAX_NAME_LENGTH}
+                                value={newName}
+                                onChange={(event) =>
+                                  setNewName(event.target.value)
+                                }
+                                placeholder="Enter a name"
+                                className="mt-2 h-11 w-full border border-[#d9c9ad] bg-white px-3 text-sm text-zinc-900 outline-none focus:border-[#9b793d]"
+                              />
+
+                              <p className="mt-2 text-xs text-zinc-500">
+                                One candle box will be personalised.
+                                Additional boxes can have different names.
+                              </p>
+
+                              <div className="mt-3 flex gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => addName(item.id)}
+                                  disabled={!newName.trim()}
+                                  className="bg-zinc-900 px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
+                                >
+                                  Add Personalisation
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setAddingNameId(null)
+                                  }
+                                  className="px-3 py-2 text-xs text-zinc-600"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
-                          <div>
-                            <label
-                              htmlFor={`quantity-${item.handle}`}
-                              className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
-                            >
-                              Quantity
-                            </label>
-
-                            <div className="mt-2 inline-flex items-center border border-zinc-300 bg-white">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setQty(item.handle, Math.max(1, item.qty - 1))
-                                }
-                                className="inline-flex h-10 w-10 items-center justify-center text-lg text-zinc-700 transition-colors hover:bg-[#f7f4ee] hover:text-zinc-950"
-                                aria-label={`Decrease quantity of ${title}`}
-                              >
-                                −
-                              </button>
-
-                              <input
-                                id={`quantity-${item.handle}`}
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={item.qty}
-                                onChange={(event) =>
-                                  setQty(
-                                    item.handle,
-                                    Math.max(
-                                      1,
-                                      Number(event.currentTarget.value || 1)
-                                    )
-                                  )
-                                }
-                                className="h-10 w-12 border-x border-zinc-300 bg-white text-center text-sm text-zinc-950 outline-none"
-                              />
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setQty(item.handle, item.qty + 1)
-                                }
-                                className="inline-flex h-10 w-10 items-center justify-center text-lg text-zinc-700 transition-colors hover:bg-[#f7f4ee] hover:text-zinc-950"
-                                aria-label={`Increase quantity of ${title}`}
-                              >
-                                +
-                              </button>
+                          {personalised ? (
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                                Quantity
+                              </p>
+                              <p className="mt-2 text-sm font-medium text-zinc-900">
+                                1 personalised box
+                              </p>
                             </div>
-                          </div>
+                          ) : (
+                            <div>
+                              <label
+                                htmlFor={`quantity-${item.id}`}
+                                className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+                              >
+                                Quantity
+                              </label>
+
+                              <div className="mt-2 inline-flex items-center border border-zinc-300 bg-white">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setQty(
+                                      item.id,
+                                      Math.max(1, item.qty - 1)
+                                    )
+                                  }
+                                  className="inline-flex h-10 w-10 items-center justify-center text-lg text-zinc-700 transition-colors hover:bg-[#f7f4ee] hover:text-zinc-950"
+                                  aria-label={`Decrease quantity of ${title}`}
+                                >
+                                  −
+                                </button>
+
+                                <input
+                                  id={`quantity-${item.id}`}
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  value={item.qty}
+                                  onChange={(event) =>
+                                    setQty(
+                                      item.id,
+                                      Math.max(
+                                        1,
+                                        Number(
+                                          event.currentTarget.value || 1
+                                        )
+                                      )
+                                    )
+                                  }
+                                  className="h-10 w-12 border-x border-zinc-300 bg-white text-center text-sm text-zinc-950 outline-none"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setQty(item.id, item.qty + 1)
+                                  }
+                                  className="inline-flex h-10 w-10 items-center justify-center text-lg text-zinc-700 transition-colors hover:bg-[#f7f4ee] hover:text-zinc-950"
+                                  aria-label={`Increase quantity of ${title}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           <button
                             type="button"
-                            onClick={() => remove(item.handle)}
+                            onClick={() => remove(item.id)}
                             className="border-b border-zinc-400 pb-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
                           >
                             Remove
@@ -302,7 +536,6 @@ export default function CartPage() {
                 <dl className="space-y-4 text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <dt className="text-zinc-600">Subtotal</dt>
-
                     <dd className="font-medium text-zinc-950">
                       {formatGBP(subtotalPence)}
                     </dd>
@@ -310,7 +543,6 @@ export default function CartPage() {
 
                   <div className="flex items-start justify-between gap-4">
                     <dt className="text-zinc-600">Shipping</dt>
-
                     <dd className="max-w-[170px] text-right text-zinc-500">
                       Calculated at checkout
                     </dd>
@@ -326,24 +558,30 @@ export default function CartPage() {
                 <div className="mt-3 space-y-3 text-sm leading-6 text-zinc-600">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-medium text-zinc-900">UK Standard</p>
+                      <p className="font-medium text-zinc-900">
+                        UK Standard
+                      </p>
                       <p className="text-xs text-zinc-500">
                         2–4 business days
                       </p>
                     </div>
-
-                    <p className="shrink-0 text-zinc-900">£3.99</p>
+                    <p className="shrink-0 text-zinc-900">
+                      £3.99
+                    </p>
                   </div>
 
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-medium text-zinc-900">UK Express</p>
+                      <p className="font-medium text-zinc-900">
+                        UK Express
+                      </p>
                       <p className="text-xs text-zinc-500">
                         Next working day
                       </p>
                     </div>
-
-                    <p className="shrink-0 text-zinc-900">£6.99</p>
+                    <p className="shrink-0 text-zinc-900">
+                      £6.99
+                    </p>
                   </div>
                 </div>
               </div>
@@ -374,7 +612,9 @@ export default function CartPage() {
                 disabled={!hasItems || loading}
                 className="group mt-6 inline-flex h-12 w-full items-center justify-center gap-3 bg-zinc-950 px-5 text-sm font-medium text-white transition-colors hover:bg-[#9b793d] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Redirecting..." : "Continue to Checkout"}
+                {loading
+                  ? "Redirecting..."
+                  : "Continue to Checkout"}
 
                 {!loading && (
                   <span
@@ -387,8 +627,8 @@ export default function CartPage() {
               </button>
 
               <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
-                Your final shipping total will be confirmed securely at
-                checkout.
+                Your final shipping total will be confirmed
+                securely at checkout.
               </p>
 
               <p className="mt-5 border-t border-zinc-200 pt-5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">

@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -5,7 +6,7 @@ import {
   type Product as AshoraProduct,
 } from "@/app/product/live";
 
-import AddToCartButton from "@/app/components/AddToCartButton";
+import PersonalisedPurchase from "@/app/product/components/PersonalisedPurchase";
 import ProductNavigation from "@/app/product/components/ProductNavigation";
 import SwipeGallery from "@/app/product/components/SwipeGallery";
 
@@ -235,11 +236,10 @@ export default function ProductHero({
               Join our circle for restock updates
             </Link>
           ) : (
-            <AddToCartButton
+            <PersonalisedPurchase
               handle={product.handle}
               stock={product.stock}
-              className="min-h-14 w-full rounded-sm border border-[var(--gold)] bg-[var(--gold)] px-6 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(185,151,82,0.2)] transition duration-300 hover:border-[var(--deep-gold)] hover:bg-[var(--deep-gold)] hover:shadow-[0_16px_38px_rgba(157,123,56,0.24)]"
-              style={goldStyle}
+              pricePence={product.pricePence}
             />
           )}
         </div>
